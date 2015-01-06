@@ -7,7 +7,7 @@ import battlecode.common.RobotType;
 
 public class HQ extends Building  {
 
-	static int max_beavers = 10;
+
 	
 	public HQ(RobotController rc) {
 		super(rc);
@@ -27,20 +27,5 @@ public class HQ extends Building  {
 		if(numBeavers >= max_beavers)
 			return;
 		spawn_robot(RobotType.BEAVER);
-//		if(robot_controller.isCoreReady()){
-//			if(robot_controller.hasSpawnRequirements(RobotType.BEAVER)){
-//				
-//				for (final Direction direction: directions){
-//					if(robot_controller.canSpawn(direction, RobotType.BEAVER)){
-//						try{
-//							robot_controller.spawn(direction,RobotType.BEAVER);
-//						} catch(Exception e){
-//							print_exception(e);
-//						}
-//						return;
-//					}
-//				}
-//			}
-//		}
 	}
 }

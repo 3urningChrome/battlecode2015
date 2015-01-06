@@ -4,8 +4,6 @@ import battlecode.common.RobotController;
 import battlecode.common.RobotType;
 
 public class Helipad extends Building  {
-
-	static int max_drones = 20;
 	
 	public Helipad(RobotController rc) {
 		super(rc);
@@ -14,7 +12,7 @@ public class Helipad extends Building  {
 	
 	public void basic_turn_loop(){
 		while(true){
-			basic_building_tasks();
+			basic_building_tasks();			
 			spawn_drone();
 			robot_controller.yield();
 		}		

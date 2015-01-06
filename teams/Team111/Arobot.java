@@ -16,6 +16,7 @@ public class Arobot {
 	static RobotType my_type;
 	
 	static int my_range;
+	static int sensor_range;
 	static double minimum_supply = 5;
 	static double mining_rate = 0;
 	static double mining_max = 0;
@@ -27,8 +28,19 @@ public class Arobot {
 	static int numBarracks = 0;	
 	static int numHelipads = 0;
 	static int numDrones = 0;
+	static int numMinerFactories = 0;
+	static int numHandwashes = 0; 
+	static int numMiners = 0;
+	
+	static int max_drones = 10;
+	static int max_beavers = 4;
+	static int max_miner_factories = 2;
+	static int helipad_max = 2;
+	static int handwash_max = 1;
+	static int max_Miners = 10;
 	
 	static final Direction[] directions = {Direction.NORTH, Direction.NORTH_EAST, Direction.EAST, Direction.SOUTH_EAST, Direction.SOUTH, Direction.SOUTH_WEST, Direction.WEST, Direction.NORTH_WEST};
+	static int directional_looks[] = new int[]{0,-1,1,-2,2,-3,3,4};
 		
 	public Arobot(RobotController rc){
 		robot_controller = rc;
@@ -36,6 +48,7 @@ public class Arobot {
 		my_team = robot_controller.getTeam();
 		enemy_team = my_team.opponent();	
 		my_type = robot_controller.getType();
+		sensor_range = my_type.sensorRadiusSquared;
 	}
 	
 	//Should override this if you actually want the robot to do something other than very basic acts.
@@ -66,9 +79,8 @@ public class Arobot {
 	public void send_supply(int amount, MapLocation location){
 		try{		
 			robot_controller.transferSupplies(amount, location);
-//			System.out.println("Amount:" + amount + " Location:" + location.toString());			
 		} catch (Exception e){
-			 print_exception(e);
+			print_exception(e);
 		}
 	}
 	
@@ -92,6 +104,9 @@ public class Arobot {
 		numBarracks = 0;
 		numHelipads = 0;
 		numDrones = 0;
+		numMinerFactories = 0;
+		numHandwashes = 0;
+		numMiners = 0;
 				
 		for (RobotInfo sensed_friendly_Robot : sensed_friendly_Robots) {
 			RobotType type = sensed_friendly_Robot.type;
@@ -105,9 +120,15 @@ public class Arobot {
 				numBarracks++;
 			} else if (type == RobotType.HELIPAD) {
 				numHelipads++;
-			}	else if (type == RobotType.DRONE) {
+			} else if (type == RobotType.DRONE) {
 				numDrones++;
-			}		
+			} else if (type == RobotType.MINERFACTORY) {
+				numMinerFactories++;
+			} else if (type == RobotType.HANDWASHSTATION) {
+				numHandwashes++;
+			}	else if (type == RobotType.MINER) {
+				numMiners++;
+			}				
 		}
 	}		
 	
@@ -136,10 +157,14 @@ public class Arobot {
 		return find_closest_map_location(robot_controller.senseEnemyTowerLocations());
 	}
 
-	public MapLocation find_closest_enemy(RobotInfo[] known_enemies) {
+	public MapLocation find_closest_non_tower_enemy(RobotInfo[] known_enemies) {
 		MapLocation[] enemy_locations = new MapLocation[known_enemies.length];
 		for(int i=0; i<known_enemies.length;i++){
-			enemy_locations[i] = known_enemies[i].location;
+			if(known_enemies[i].type == RobotType.TOWER){
+				enemy_locations[i] = new MapLocation(99999999,99999999);
+			} else{
+				enemy_locations[i] = known_enemies[i].location;
+			}
 		}
 		return find_closest_map_location(enemy_locations);
 	}

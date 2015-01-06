@@ -32,17 +32,12 @@ public class Building extends Arobot {
 	}
 	
 	public void spawn_robot(RobotType required_type){
-System.out.println("Building Copters");	
-		if(robot_controller.isCoreReady()){
-			System.out.println("Building Copters - Core ready");				
+		if(robot_controller.isCoreReady()){				
 			if(robot_controller.hasSpawnRequirements(required_type)){	
-				System.out.println("Building Copters - has spawn requirements");	
 				for (final Direction direction: directions){
-					if(robot_controller.canSpawn(direction, required_type)){
-						System.out.println("Building Copters - Can Spawn: " + direction.toString());	
+					if(robot_controller.canSpawn(direction, required_type)){	
 						try{
 							robot_controller.spawn(direction,required_type);
-							System.out.println("Building Copters - spawned");
 							return;
 						} catch(Exception e){
 							print_exception(e);
