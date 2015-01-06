@@ -51,7 +51,7 @@ public class Arobot {
 	public void attack_random_enemy_in_range(){
 		if(my_type.canAttack()){
 			if(robot_controller.isWeaponReady()){
-				RobotInfo[] sensed_enemy_robots = robot_controller.senseNearbyRobots(my_range, enemy_team);
+				RobotInfo[] sensed_enemy_robots = get_all_enemies_in_range(my_range);
 				if(sensed_enemy_robots.length > 0){
 					try{
 						robot_controller.attackLocation(sensed_enemy_robots[0].location);
@@ -85,7 +85,7 @@ public class Arobot {
 	}
 	
 	public void count_the_troops(){
-		RobotInfo[] sensed_friendly_Robots = robot_controller.senseNearbyRobots(999999, my_team);
+		RobotInfo[] sensed_friendly_Robots = get_all_friendly_robots();
 		numSoldiers = 0;
 		numBashers = 0;
 		numBeavers = 0;
@@ -111,12 +111,54 @@ public class Arobot {
 		}
 	}		
 	
+	public RobotInfo[] get_all_enemy_robots(){
+		return robot_controller.senseNearbyRobots(999999, enemy_team);
+	}
+	
+	public RobotInfo[] get_all_friendly_robots(){
+		return robot_controller.senseNearbyRobots(999999, my_team);
+	}
+	
+	public RobotInfo[] get_all_enemies_in_range(int range){
+		return robot_controller.senseNearbyRobots(range, enemy_team);
+	}
+	
+	public RobotInfo[] get_all_friends_in_range(int range){
+		return robot_controller.senseNearbyRobots(range, my_team);
+	}
+	
 	public void print_exception(Exception e){
         System.out.println("Unexpected exception");
         e.printStackTrace();
 	}
-}
 
+	public MapLocation find_closest_tower() {
+		return find_closest_map_location(robot_controller.senseEnemyTowerLocations());
+	}
+
+	public MapLocation find_closest_enemy(RobotInfo[] known_enemies) {
+		MapLocation[] enemy_locations = new MapLocation[known_enemies.length];
+		for(int i=0; i<known_enemies.length;i++){
+			enemy_locations[i] = known_enemies[i].location;
+		}
+		return find_closest_map_location(enemy_locations);
+	}
+	
+	public MapLocation find_closest_map_location(MapLocation [] map_locations){
+		double closest_distance = 99999;
+		int closest_position = 0;
+		int number_of_locations = map_locations.length;
+		for(int i = 0; i < number_of_locations; i++){
+			if(robot_controller.getLocation().distanceSquaredTo(map_locations[i]) < closest_distance){
+				closest_position = i;
+				closest_distance = robot_controller.getLocation().distanceSquaredTo(map_locations[i]);
+			}
+		}		
+		return map_locations[closest_position];
+	}
+	
+
+}
 
 //canAttackLocation(MapLocation loc)
 //getWeaponDelay()

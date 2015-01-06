@@ -27,19 +27,29 @@ public class Mobile extends Arobot {
 			if(my_mining_rate(robot_controller.getLocation()) < mining_move_threshold){
 				for(int i = 1; i < 50; i++){
 					for (final Direction direction: directions){
-						if(my_mining_rate(robot_controller.getLocation().add(direction,i)) > mining_move_threshold && robot_controller.canMove(direction)){
-							try{
-								robot_controller.move(direction);
+						if(my_mining_rate(robot_controller.getLocation().add(direction,i)) > mining_move_threshold){
+							if (move_towards_direction(direction))
 								return;
-							} catch(Exception e){
-								print_exception(e);
-							}
 						}
 					}
 				}
 				mining_move_threshold /=2;
 			}
 		}
+	}
+	
+	public boolean move_towards_direction(Direction direction){
+		if(!robot_controller.isCoreReady())
+			return false;
+		try{
+			if (robot_controller.canMove(direction)){
+				robot_controller.move(direction);
+				return true;
+			}
+		} catch(Exception e){
+			print_exception(e);
+		}		
+		return false;
 	}
 	
 }

@@ -21,7 +21,7 @@ public class Building extends Arobot {
 	
 	public void dish_out_supply(){	
 		if(robot_controller.getSupplyLevel() > minimum_supply){		
-			RobotInfo[] sensed_friendly_robots = robot_controller.senseNearbyRobots(GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED, my_team);
+			RobotInfo[] sensed_friendly_robots = get_all_friends_in_range(GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED);
 			for (final RobotInfo sensed_friendly_robot: sensed_friendly_robots){			
 				if(sensed_friendly_robot.supplyLevel < minimum_supply){					
 					double amount = Math.min((robot_controller.getSupplyLevel() - minimum_supply), (minimum_supply - sensed_friendly_robot.supplyLevel));

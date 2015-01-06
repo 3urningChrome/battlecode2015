@@ -7,7 +7,7 @@ import battlecode.common.RobotType;
 
 public class HQ extends Building  {
 
-	static int max_beavers = 6;
+	static int max_beavers = 10;
 	
 	public HQ(RobotController rc) {
 		super(rc);

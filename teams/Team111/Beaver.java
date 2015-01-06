@@ -8,6 +8,7 @@ import battlecode.common.RobotType;
 public class Beaver extends Mobile {
 
 	static int beaver_helipad_trigger = 5;
+	static int helipad_max = 2;
 	
 	public Beaver(RobotController rc) {
 		super(rc);
@@ -31,7 +32,7 @@ public class Beaver extends Mobile {
 	public void build_helipad(){
 		while(true){
 			count_the_troops();
-			if(numHelipads > 0)
+			if(numHelipads >= helipad_max)
 				return;			
 		
 			if(robot_controller.isCoreReady()){
@@ -40,7 +41,6 @@ public class Beaver extends Mobile {
 						if(robot_controller.canBuild(direction, RobotType.HELIPAD)){
 							try{			
 								robot_controller.build(direction,RobotType.HELIPAD);
-								return;
 							} catch(Exception e){
 								print_exception(e);
 							}
