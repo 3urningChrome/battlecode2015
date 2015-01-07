@@ -1,6 +1,7 @@
 package Team111;
 
 import battlecode.common.RobotController;
+import battlecode.common.RobotType;
 
 public class AerospaceLab extends Building {
 
@@ -8,5 +9,4 @@ public class AerospaceLab extends Building {
 		super(rc);
 		basic_turn_loop();
 	}
-
 }

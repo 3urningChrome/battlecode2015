@@ -22,22 +22,18 @@ public class Arobot {
 	static double mining_max = 0;
 	static double mining_move_threshold = 1;
 	
-	static int numSoldiers = 0;
-	static int numBashers = 0;
-	static int numBeavers = 0;
-	static int numBarracks = 0;	
-	static int numHelipads = 0;
-	static int numDrones = 0;
-	static int numMinerFactories = 0;
-	static int numHandwashes = 0; 
-	static int numMiners = 0;
+	static int[] robot_census = new int[]{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+	static int[] robot_max = new int[]{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+	static int[] spawn_build_ordinals;
+	static int[] robot_types_ordinals = new int[RobotType.values().length];
+	static RobotType[] robot_types = RobotType.values();
 	
-	static int max_drones = 10;
-	static int max_beavers = 4;
-	static int max_miner_factories = 2;
-	static int helipad_max = 2;
-	static int handwash_max = 1;
-	static int max_Miners = 10;
+    public static final int HASH = Math.max(GameConstants.MAP_MAX_WIDTH,GameConstants.MAP_MAX_HEIGHT);	
+	static int static_broadcast_offset = 100;
+	static int mobile_broadcast_offset = static_broadcast_offset + (HASH * HASH);
+
+		
+	static MapLocation HQ_location;
 	
 	static final Direction[] directions = {Direction.NORTH, Direction.NORTH_EAST, Direction.EAST, Direction.SOUTH_EAST, Direction.SOUTH, Direction.SOUTH_WEST, Direction.WEST, Direction.NORTH_WEST};
 	static int directional_looks[] = new int[]{0,-1,1,-2,2,-3,3,4};
@@ -49,13 +45,148 @@ public class Arobot {
 		enemy_team = my_team.opponent();	
 		my_type = robot_controller.getType();
 		sensor_range = my_type.sensorRadiusSquared;
+		
+		HQ_location = robot_controller.senseEnemyHQLocation();
+		
+		initialise_default_strategy();
+		initialise_spawn_build_list();
+		
+		int num_of_loops = robot_types_ordinals.length;
+		RobotType[] all_robots = RobotType.values();
+		for(int i=0; i< num_of_loops;i++){
+			robot_types_ordinals[i] = all_robots[i].ordinal();
+		}
 	}
 	
+	private void initialise_spawn_build_list() {
+		spawn_build_ordinals = new int[1];
+		switch(my_type){
+		case AEROSPACELAB:
+			spawn_build_ordinals[0] = RobotType.LAUNCHER.ordinal();
+			break;
+		case BARRACKS:
+			spawn_build_ordinals = new int[2];
+			spawn_build_ordinals[0] = RobotType.BASHER.ordinal();
+			spawn_build_ordinals[1] = RobotType.SOLDIER.ordinal();
+			break;
+		case BASHER:
+			spawn_build_ordinals = null;
+			break;
+		case BEAVER:
+			spawn_build_ordinals = new int[9];
+			spawn_build_ordinals[0] = RobotType.AEROSPACELAB.ordinal();
+			spawn_build_ordinals[1] = RobotType.BARRACKS.ordinal();
+			spawn_build_ordinals[2] = RobotType.HANDWASHSTATION.ordinal();
+			spawn_build_ordinals[3] = RobotType.HELIPAD.ordinal();
+			spawn_build_ordinals[4] = RobotType.MINERFACTORY.ordinal();
+			spawn_build_ordinals[5] = RobotType.SUPPLYDEPOT.ordinal();
+			spawn_build_ordinals[6] = RobotType.TANKFACTORY.ordinal();
+			spawn_build_ordinals[7] = RobotType.TECHNOLOGYINSTITUTE.ordinal();
+			spawn_build_ordinals[8] = RobotType.TRAININGFIELD.ordinal();
+			break;
+		case COMMANDER:
+			spawn_build_ordinals = null;
+			break;
+		case COMPUTER:
+			spawn_build_ordinals = null;
+			break;
+		case DRONE:
+			spawn_build_ordinals = null;
+			break;
+		case HANDWASHSTATION:
+			spawn_build_ordinals = null;
+			break;
+		case HELIPAD:
+			spawn_build_ordinals[0] = RobotType.DRONE.ordinal();
+			break;
+		case HQ:
+			spawn_build_ordinals[0] = RobotType.BEAVER.ordinal();
+			break;
+		case LAUNCHER:
+			spawn_build_ordinals[0] = RobotType.MISSILE.ordinal();
+			break;
+		case MINER:
+			spawn_build_ordinals = null;
+			break;
+		case MINERFACTORY:
+			spawn_build_ordinals[0] = RobotType.MINER.ordinal();
+			break;
+		case MISSILE:
+			spawn_build_ordinals = null;
+			break;
+		case SOLDIER:
+			spawn_build_ordinals = null;
+			break;
+		case SUPPLYDEPOT:
+			spawn_build_ordinals = null;
+			break;
+		case TANK:
+			spawn_build_ordinals = null;
+			break;
+		case TANKFACTORY:
+			spawn_build_ordinals[0] = RobotType.TANK.ordinal();
+			break;
+		case TECHNOLOGYINSTITUTE:
+			spawn_build_ordinals[0] = RobotType.COMPUTER.ordinal();
+			break;
+		case TOWER:
+			spawn_build_ordinals = null;
+			break;
+		case TRAININGFIELD:
+			spawn_build_ordinals[0] = RobotType.COMMANDER.ordinal();
+			break;
+		default:
+			break;
+		}
+	}
+
+	private void initialise_default_strategy() {
+		robot_max[RobotType.AEROSPACELAB.ordinal()] = 0;
+		robot_max[RobotType.BARRACKS.ordinal()] = 0;
+		robot_max[RobotType.BASHER.ordinal()] = 0;
+		robot_max[RobotType.BEAVER.ordinal()] = 4;
+		robot_max[RobotType.COMMANDER.ordinal()] = 0;
+		robot_max[RobotType.COMPUTER.ordinal()] = 0;
+		robot_max[RobotType.DRONE.ordinal()] = 20;
+		robot_max[RobotType.HANDWASHSTATION.ordinal()] = 0;
+		robot_max[RobotType.HELIPAD.ordinal()] = 0;
+		robot_max[RobotType.HQ.ordinal()] = 0;
+		robot_max[RobotType.LAUNCHER.ordinal()] = 0;
+		robot_max[RobotType.MINER.ordinal()] = 6;
+		robot_max[RobotType.MINERFACTORY.ordinal()] = 1;
+		robot_max[RobotType.MISSILE.ordinal()] = 0;
+		robot_max[RobotType.SOLDIER.ordinal()] = 0;
+		robot_max[RobotType.SUPPLYDEPOT.ordinal()] = 0;
+		robot_max[RobotType.TANK.ordinal()] = 0;
+		robot_max[RobotType.TANKFACTORY.ordinal()] = 0;
+		robot_max[RobotType.TECHNOLOGYINSTITUTE.ordinal()] = 0;
+		robot_max[RobotType.TOWER.ordinal()] = 0;
+		robot_max[RobotType.TRAININGFIELD.ordinal()] = 0;	
+	}
+	
+	public void update_strategy() {
+		if(robot_census[RobotType.MINERFACTORY.ordinal()] == robot_max[RobotType.MINERFACTORY.ordinal()]){
+			robot_max[RobotType.HELIPAD.ordinal()] = 1;
+		}
+		
+		if(robot_census[RobotType.MINER.ordinal()] == robot_max[RobotType.MINER.ordinal()]){
+			robot_max[RobotType.DRONE.ordinal()] = 20;
+		}else{
+			robot_max[RobotType.DRONE.ordinal()] = 0;
+		}
+		
+		if(robot_controller.getTeamOre() > 1000){
+			robot_max[RobotType.HANDWASHSTATION.ordinal()] = 1;
+		}
+			
+	}
+
 	//Should override this if you actually want the robot to do something other than very basic acts.
 	//also this will not be very efficient. just simple and guaranteed to work for any RobotType.
 	public void basic_turn_loop(){
 		while(true){
 			attack_random_enemy_in_range();
+			update_strategy();
 			robot_controller.yield();
 		}
 	}	
@@ -64,7 +195,7 @@ public class Arobot {
 	public void attack_random_enemy_in_range(){
 		if(my_type.canAttack()){
 			if(robot_controller.isWeaponReady()){
-				RobotInfo[] sensed_enemy_robots = get_all_enemies_in_range(my_range);
+				RobotInfo[] sensed_enemy_robots = robot_controller.senseNearbyRobots(my_range,enemy_team);
 				if(sensed_enemy_robots.length > 0){
 					try{
 						robot_controller.attackLocation(sensed_enemy_robots[0].location);
@@ -83,110 +214,20 @@ public class Arobot {
 			print_exception(e);
 		}
 	}
-	
-	public double my_mining_rate(MapLocation the_location){
-		if(robot_controller.canMine()){
-			double current_ore = robot_controller.senseOre(the_location);
-			if(current_ore == 0)
-				return 0;
-			
-			//min(n, max(1, min(mm, n/mr)))
-			return Math.min(current_ore, Math.max(1,Math.min(mining_max,(current_ore/mining_rate))));
-		}
-		return 0;
-	}
-	
+		
 	public void count_the_troops(){
-		RobotInfo[] sensed_friendly_Robots = get_all_friendly_robots();
-		numSoldiers = 0;
-		numBashers = 0;
-		numBeavers = 0;
-		numBarracks = 0;
-		numHelipads = 0;
-		numDrones = 0;
-		numMinerFactories = 0;
-		numHandwashes = 0;
-		numMiners = 0;
-				
+		robot_census = new int[]{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+		RobotInfo[] sensed_friendly_Robots = robot_controller.senseNearbyRobots(999999, my_team);
+		
 		for (RobotInfo sensed_friendly_Robot : sensed_friendly_Robots) {
-			RobotType type = sensed_friendly_Robot.type;
-			if (type == RobotType.SOLDIER) {
-				numSoldiers++;
-			} else if (type == RobotType.BASHER) {
-				numBashers++;
-			} else if (type == RobotType.BEAVER) {
-				numBeavers++;
-			} else if (type == RobotType.BARRACKS) {
-				numBarracks++;
-			} else if (type == RobotType.HELIPAD) {
-				numHelipads++;
-			} else if (type == RobotType.DRONE) {
-				numDrones++;
-			} else if (type == RobotType.MINERFACTORY) {
-				numMinerFactories++;
-			} else if (type == RobotType.HANDWASHSTATION) {
-				numHandwashes++;
-			}	else if (type == RobotType.MINER) {
-				numMiners++;
-			}				
+				robot_census[sensed_friendly_Robot.type.ordinal()] ++;
 		}
+		
+		robot_census[my_type.ordinal()] ++;
 	}		
-	
-	public RobotInfo[] get_all_enemy_robots(){
-		return robot_controller.senseNearbyRobots(999999, enemy_team);
-	}
-	
-	public RobotInfo[] get_all_friendly_robots(){
-		return robot_controller.senseNearbyRobots(999999, my_team);
-	}
-	
-	public RobotInfo[] get_all_enemies_in_range(int range){
-		return robot_controller.senseNearbyRobots(range, enemy_team);
-	}
-	
-	public RobotInfo[] get_all_friends_in_range(int range){
-		return robot_controller.senseNearbyRobots(range, my_team);
-	}
 	
 	public void print_exception(Exception e){
         System.out.println("Unexpected exception");
         e.printStackTrace();
 	}
-
-	public MapLocation find_closest_tower() {
-		return find_closest_map_location(robot_controller.senseEnemyTowerLocations());
-	}
-
-	public MapLocation find_closest_non_tower_enemy(RobotInfo[] known_enemies) {
-		MapLocation[] enemy_locations = new MapLocation[known_enemies.length];
-		for(int i=0; i<known_enemies.length;i++){
-			if(known_enemies[i].type == RobotType.TOWER){
-				enemy_locations[i] = new MapLocation(99999999,99999999);
-			} else{
-				enemy_locations[i] = known_enemies[i].location;
-			}
-		}
-		return find_closest_map_location(enemy_locations);
-	}
-	
-	public MapLocation find_closest_map_location(MapLocation [] map_locations){
-		double closest_distance = 99999;
-		int closest_position = 0;
-		int number_of_locations = map_locations.length;
-		for(int i = 0; i < number_of_locations; i++){
-			if(robot_controller.getLocation().distanceSquaredTo(map_locations[i]) < closest_distance){
-				closest_position = i;
-				closest_distance = robot_controller.getLocation().distanceSquaredTo(map_locations[i]);
-			}
-		}		
-		return map_locations[closest_position];
-	}
-	
-
 }
-
-//canAttackLocation(MapLocation loc)
-//getWeaponDelay()
-//isWeaponReady()
-//senseNearbyRobots(int radiusSquared, Team team)
-//attackLocation(MapLocation loc)
