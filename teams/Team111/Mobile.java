@@ -1,63 +1,76 @@
-package Team111;
+package team111;
 
 import battlecode.common.Clock;
 import battlecode.common.Direction;
 import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
-import battlecode.common.RobotInfo;
 import battlecode.common.RobotType;
 
 public class Mobile extends Arobot {
 	
 	int[] danger_levels = {0,0,0,0,0,0,0,0};
 	int my_danger_level = 0;
-	RobotInfo[] known_enemies;
 	
 	public Mobile(RobotController rc){
 		super(rc);
+		my_max_supply_level = max_mobile_supply_level;
+		my_min_supply_level = min_mobile_supply_level;
+		my_optimal_supply_level = optimal_mobile_supply_level;		
 	}
 	
 	public void basic_turn_loop(){
 		while(true){
-			known_enemies = robot_controller.senseNearbyRobots((int)(GameConstants.HQ_BUFFED_ATTACK_RADIUS_SQUARED * 1.2),enemy_team);
-			attack_random_enemy_in_range();
-			if(Clock.getRoundNum()%5 == 0){
-				count_the_troops();
-				update_strategy();	
-			}
-			set_my_danger_level();
+			while(!robot_controller.isCoreReady() && !robot_controller.isWeaponReady())
+				robot_controller.yield();
 			
-			if(my_danger_level == 0)
-				check_for_builds();	
-						
+			sensed_enemy_robots = robot_controller.senseNearbyRobots((int)(GameConstants.HQ_BUFFED_ATTACK_RADIUS_SQUARED * 1.2),enemy_team);
+									
 			if(robot_controller.isCoreReady()){
-				//set_danger_levels();
-				if(my_danger_level !=0)
+				set_my_danger_level();
+				
+				if(Clock.getRoundNum() > 1600){
+					danger_levels = new int[]{0,0,0,0,0,0,0,0};	
+					my_danger_level = 0;
+				}
+				if(my_danger_level == 0){
+					//if(Clock.getRoundNum()%5 == 0){
+						count_the_troops();
+						update_strategy();	
+						check_for_builds();							
+					//}	
+				}
+				
+				if(my_danger_level !=0){
 					evasive_move();
+				} else if(robot_controller.canMine()){
+					evaluate_mining_position();
+					go_mining();
+				} else{
+					int swarm_location_x = read_broadcast(swarm_location_channel_x);
+					int swarm_location_y = read_broadcast(swarm_location_channel_y);
+					MapLocation swarm_location = new MapLocation(swarm_location_x,swarm_location_y);
+					move_towards_direction(robot_controller.getLocation().directionTo(swarm_location));
+				}
 			}
-
-			if(robot_controller.canMine() && my_danger_level == 0){
-				evaluate_mining_position();
-				go_mining();
-			}
+			//attack_random_enemy_in_range();
+			attack_deadest_enemy_in_range();
+			if(all_out_attack)
+				dish_out_supply();
 			robot_controller.yield();
 		}		
 	}
 	
+	
 	public void evasive_move(){
-		move_towards_direction(robot_controller.getLocation().directionTo(robot_controller.senseHQLocation()));
+		move_towards_direction(robot_controller.getLocation().directionTo(HQ_location));
 	}
 	
 	public void set_my_danger_level(){
 		my_danger_level = 0;
-		MapLocation my_location = robot_controller.getLocation();
-		my_location = new MapLocation(((my_location.x % HASH) + HASH) % HASH,((my_location.y % HASH) + HASH) % HASH);		
-		try{
-			my_danger_level = robot_controller.readBroadcast(static_broadcast_offset + (my_location.x * GameConstants.MAP_MAX_WIDTH ) + my_location.y);
-		} catch (Exception e){
-			print_exception(e);
-		}				
+		MapLocation my_location = robot_controller.getLocation();	
+		my_danger_level = read_broadcast(static_broadcast_offset + location_channel(my_location));
+		set_danger_levels();	
 	}
 	
 	public void set_danger_levels(){
@@ -65,44 +78,41 @@ public class Mobile extends Arobot {
 		danger_levels = new int[]{0,0,0,0,0,0,0,0};		
 		//add HQ and towers as calculated by HQ
 		for(int i=0; i< directions.length; i++){
-			my_location = robot_controller.getLocation().add(directions[i]);
-			my_location = new MapLocation(((my_location.x % HASH) + HASH) % HASH,((my_location.y % HASH) + HASH) % HASH);				
-			try{
-				danger_levels[i] = robot_controller.readBroadcast(static_broadcast_offset + (my_location.x * GameConstants.MAP_MAX_WIDTH ) + my_location.y);
-			} catch (Exception e){
-				print_exception(e);
-			}
+			my_location = robot_controller.getLocation().add(directions[i]);			
+				danger_levels[i] = read_broadcast(static_broadcast_offset + location_channel(my_location));
 		}
 		
-		if(known_enemies == null)
+		if(sensed_enemy_robots == null)
 			return;
-		for(int i=0; i<known_enemies.length;i++){
-			if(!known_enemies[i].type.equals(RobotType.TOWER)){
+		for(int i=0; i<sensed_enemy_robots.length;i++){
+			if(!sensed_enemy_robots[i].type.equals(RobotType.TOWER)){
 				for(int j=0; j<danger_levels.length;j++){
-					if(known_enemies[i].location.distanceSquaredTo(robot_controller.getLocation().add(directions[j])) <= known_enemies[i].type.attackRadiusSquared){
-						danger_levels[j] += known_enemies[i].type.attackPower;
+					int attack_range = sensed_enemy_robots[i].type.attackRadiusSquared;
+					if(sensed_enemy_robots[i].type.equals(RobotType.LAUNCHER)){
+						attack_range = 36;
+					}
+					if(sensed_enemy_robots[i].type.equals(RobotType.MISSILE)){
+						attack_range = 36;
+					}
+					if(sensed_enemy_robots[i].location.distanceSquaredTo(robot_controller.getLocation().add(directions[j])) <= attack_range ){
+						danger_levels[j] += sensed_enemy_robots[i].type.attackPower;
 					}
 				}
 			}		
 		}		
 	}
-	public void set_danger_level(Direction direction){
+	public void set_danger_levelzz(Direction direction){
 		MapLocation my_location;
 		
 		danger_levels[direction.ordinal()] = 0;	
 		//add HQ and towers as calculated by HQ
-		my_location = robot_controller.getLocation().add(direction);
-		my_location = new MapLocation(((my_location.x % HASH) + HASH) % HASH,((my_location.y % HASH) + HASH) % HASH);				
-		try{
-			danger_levels[direction.ordinal()] = robot_controller.readBroadcast(static_broadcast_offset + (my_location.x * GameConstants.MAP_MAX_WIDTH ) + my_location.y);
-		} catch (Exception e){
-			print_exception(e);
-		}
+		my_location = robot_controller.getLocation().add(direction);				
+		danger_levels[direction.ordinal()] = read_broadcast(static_broadcast_offset + location_channel(my_location));
 		
-		for(int i=0; i<known_enemies.length;i++){
-			if(!known_enemies[i].type.equals(RobotType.TOWER)){
-				if(known_enemies[i].location.distanceSquaredTo(robot_controller.getLocation().add(direction)) <= known_enemies[i].type.attackRadiusSquared)
-					danger_levels[direction.ordinal()] += known_enemies[i].type.attackPower;
+		for(int i=0; i<sensed_enemy_robots.length;i++){
+			if(!sensed_enemy_robots[i].type.equals(RobotType.TOWER)){
+				if(sensed_enemy_robots[i].location.distanceSquaredTo(robot_controller.getLocation().add(direction)) <= sensed_enemy_robots[i].type.attackRadiusSquared)
+					danger_levels[direction.ordinal()] += sensed_enemy_robots[i].type.attackPower;
 			}		
 		}		
 	}
@@ -126,7 +136,7 @@ public class Mobile extends Arobot {
 				for(int i = 1; i < 50; i++){
 					for (final Direction direction: directions){
 						if(my_mining_rate(robot_controller.getLocation().add(direction,i)) > mining_move_threshold){
-							if (move_towards_direction(direction))
+							move_towards_direction(direction);
 								return;
 						}
 					}
@@ -152,7 +162,8 @@ public class Mobile extends Arobot {
 		for(int i=0; i<8;i++){
 			int test_direction = ((initial_direction.ordinal() + directional_looks[i] + 8)%8);
 			if(danger_levels[test_direction] == 0){
-				return move(directions[test_direction]);
+				if(move(directions[test_direction]))
+					return true;
 			}
 		}	
 		return false;
@@ -197,5 +208,4 @@ public class Mobile extends Arobot {
 						}
 		return false;
 	}		
-	
 }

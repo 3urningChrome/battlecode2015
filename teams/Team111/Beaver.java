@@ -1,9 +1,7 @@
-package Team111;
+package team111;
 
-import battlecode.common.Direction;
 import battlecode.common.GameConstants;
 import battlecode.common.RobotController;
-import battlecode.common.RobotType;
 
 public class Beaver extends Mobile {
 

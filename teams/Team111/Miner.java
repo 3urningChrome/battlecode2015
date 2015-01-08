@@ -1,4 +1,4 @@
-package Team111;
+package team111;
 
 import battlecode.common.GameConstants;
 import battlecode.common.RobotController;

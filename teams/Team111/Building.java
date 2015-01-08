@@ -1,10 +1,9 @@
-package Team111;
+package team111;
 
+import battlecode.common.Clock;
 import battlecode.common.Direction;
 import battlecode.common.GameConstants;
-import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
-import battlecode.common.RobotInfo;
 import battlecode.common.RobotType;
 
 public class Building extends Arobot {
@@ -12,25 +11,30 @@ public class Building extends Arobot {
 	
 	public Building(RobotController rc){
 		super(rc);
+		my_max_supply_level = max_building_supply_level;
+		my_min_supply_level = min_building_supply_level;
+		my_optimal_supply_level = optimal_building_supply_level;			
 	}
 	
 	public void basic_turn_loop(){
+		robot_controller.yield();
 		while(true){
-			update_strategy();
-			attack_random_enemy_in_range();
-			count_the_troops();
-			dish_out_supply();
-			check_for_spawns();		
+			sensed_enemy_robots = robot_controller.senseNearbyRobots((int)(GameConstants.HQ_BUFFED_ATTACK_RADIUS_SQUARED * 1.2),enemy_team);			
+			//attack_random_enemy_in_range();
+			attack_deadest_enemy_in_range();
+			if(Clock.getRoundNum()%5 == 0){			
+				count_the_troops();
+				update_strategy();	
+				check_for_spawns();	
+			}	
+			if(all_out_attack)
+				dish_out_supply();
 			robot_controller.yield();
 		}		
 	}	
 		
 	public void check_for_spawns() {
 		if(my_type.canSpawn() && spawn_build_ordinals != null)
-//			if(spawn_build_ordinals == null){
-//				System.out.println("Robot canSpawn() but nothing to spawn.  Type: " + my_type.toString());
-//				return;
-//			}
 			for(int spawn_ordinal: spawn_build_ordinals)
 				if(need_more_spawns(spawn_ordinal))
 					if(spawn_robot(robot_types[spawn_ordinal]))
@@ -57,15 +61,4 @@ public class Building extends Arobot {
 		return false;
 	}		
 
-	public void dish_out_supply(){	
-		if(robot_controller.getSupplyLevel() > minimum_supply){		
-			RobotInfo[] sensed_friendly_robots = robot_controller.senseNearbyRobots(GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED, my_team);
-			for (final RobotInfo sensed_friendly_robot: sensed_friendly_robots){			
-				if(sensed_friendly_robot.supplyLevel < minimum_supply){					
-					double amount = Math.min((robot_controller.getSupplyLevel() - minimum_supply), (minimum_supply - sensed_friendly_robot.supplyLevel));
-					send_supply((int)amount, sensed_friendly_robot.location);
-				}
-			}
-		}
-	}
 }

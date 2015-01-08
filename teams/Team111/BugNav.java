@@ -1,11 +1,13 @@
-package Team111;
+package team111;
 import battlecode.common.Direction;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
+import battlecode.common.RobotType;
+import battlecode.common.TerrainTile;
 
 public class BugNav{
-	private MapLocation destination;
-	private MapLocation my_location;
+	public MapLocation destination;
+	public MapLocation my_location;
 	
 	private Direction current_heading = Direction.NONE;
 	private Direction evaluate_heading = Direction.NONE;
@@ -80,7 +82,7 @@ public class BugNav{
 			navigator_state = 3;
 	}
 	
-	public boolean can_move(Direction move_direction){
+	public boolean can_move(Direction move_direction){	
 		if(terrain_is_impassable(move_direction))
 			return false;
 		if(space_is_occupied(move_direction))
@@ -90,22 +92,26 @@ public class BugNav{
 
 	public boolean terrain_is_impassable(Direction move_direction){
 		MapLocation next_move = my_location.add(move_direction);
-//		if (robot_controller.canSenseSquare(next_move)){
-//			TerrainTile sensed_terrain_tile = robot_controller.senseTerrainTile(next_move);
-//			switch (robot_controller.senseTerrainTile(terrain_location)){
-//				case NORMAL:
-//					return false;
-//				case ROAD:
-//					return false;
-//				default:
-//					return true;
-//			}
-//		}
-		return true;
+		TerrainTile test_terrain = robot_controller.senseTerrainTile(next_move);
+		if(test_terrain.equals(TerrainTile.NORMAL))
+			return false;
+		if(test_terrain.equals(TerrainTile.OFF_MAP))
+			return true;
+		if(test_terrain.equals(TerrainTile.VOID) && (robot_controller.getType().equals(RobotType.DRONE) || robot_controller.getType().equals(RobotType.MISSILE)))
+			return false;
+		if(test_terrain.equals(TerrainTile.VOID))
+			return true;
+		
+		return false;
 	}
 	
 	//Not even sure if this should be checked here....
 	public boolean space_is_occupied(Direction move_direction){
+		try{
+			return robot_controller.isLocationOccupied(my_location.add(move_direction));
+		}catch(Exception e){
+			System.out.println("Exception in bug space_is_occupied");
+		}
 		return false;
 	}	
 	

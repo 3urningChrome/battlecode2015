@@ -1,5 +1,6 @@
-package Team111;
+package team111;
 
+import battlecode.common.Clock;
 import battlecode.common.Direction;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
@@ -17,14 +18,30 @@ public class Arobot {
 	
 	static int my_range;
 	static int sensor_range;
-	static int swarm_location_channel = 1;
-	static double minimum_supply = 5;
+	static int swarm_location_channel_x = 1;
+	static int swarm_location_channel_y = 2;
+	static int troop_count_channel  =3; // (to 23)
+	static int next_available_channel = 24;
+	static int swarm_trigger = 900;
+	static boolean all_out_attack =false;
+	
+	static double min_building_supply_level = 5;
+	static double max_building_supply_level = 1000;
+	static double optimal_building_supply_level = 200;
+	static double min_mobile_supply_level = 5;
+	static double max_mobile_supply_level = 100;
+	static double optimal_mobile_supply_level = 20;	
+	static double my_max_supply_level = 1000;
+	static double my_min_supply_level = 5;
+	static double my_optimal_supply_level = 200;	
+	
 	static double mining_rate = 0;
 	static double mining_max = 0;
-	static double mining_move_threshold = 1;
+	static double mining_move_threshold = 10;
 	
 	static int[] robot_census = new int[]{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	static int[] robot_max = new int[]{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+	static boolean[] robot_mobile = new boolean[]{false,false,true,true,true,false,true,false,false,false,true,true,false,false,true,false,true,false,false,false,false};
 	static int[] spawn_build_ordinals;
 	static int[] robot_types_ordinals = new int[RobotType.values().length];
 	static RobotType[] robot_types = RobotType.values();
@@ -35,6 +52,9 @@ public class Arobot {
 
 		
 	static MapLocation HQ_location;
+	static MapLocation enemy_HQ_Location;
+	
+	RobotInfo[] sensed_enemy_robots;
 	
 	
 	static final Direction[] directions = {Direction.NORTH, Direction.NORTH_EAST, Direction.EAST, Direction.SOUTH_EAST, Direction.SOUTH, Direction.SOUTH_WEST, Direction.WEST, Direction.NORTH_WEST};
@@ -48,7 +68,8 @@ public class Arobot {
 		my_type = robot_controller.getType();
 		sensor_range = my_type.sensorRadiusSquared;
 		
-		HQ_location = robot_controller.senseEnemyHQLocation();
+		HQ_location = robot_controller.senseHQLocation();
+		enemy_HQ_Location = robot_controller.senseEnemyHQLocation();
 		
 		initialise_default_strategy();
 		initialise_spawn_build_list();
@@ -58,6 +79,8 @@ public class Arobot {
 		for(int i=0; i< num_of_loops;i++){
 			robot_types_ordinals[i] = all_robots[i].ordinal();
 		}
+		
+		sensed_enemy_robots = robot_controller.senseNearbyRobots(my_range,enemy_team);
 	}
 	
 	private void initialise_spawn_build_list() {
@@ -146,16 +169,16 @@ public class Arobot {
 		robot_max[RobotType.AEROSPACELAB.ordinal()] = 0;
 		robot_max[RobotType.BARRACKS.ordinal()] = 0;
 		robot_max[RobotType.BASHER.ordinal()] = 0;
-		robot_max[RobotType.BEAVER.ordinal()] = 4;
+		robot_max[RobotType.BEAVER.ordinal()] = 1;
 		robot_max[RobotType.COMMANDER.ordinal()] = 0;
 		robot_max[RobotType.COMPUTER.ordinal()] = 0;
-		robot_max[RobotType.DRONE.ordinal()] = 20;
+		robot_max[RobotType.DRONE.ordinal()] = 0;
 		robot_max[RobotType.HANDWASHSTATION.ordinal()] = 0;
-		robot_max[RobotType.HELIPAD.ordinal()] = 0;
+		robot_max[RobotType.HELIPAD.ordinal()] = 1;
 		robot_max[RobotType.HQ.ordinal()] = 0;
 		robot_max[RobotType.LAUNCHER.ordinal()] = 0;
-		robot_max[RobotType.MINER.ordinal()] = 6;
-		robot_max[RobotType.MINERFACTORY.ordinal()] = 1;
+		robot_max[RobotType.MINER.ordinal()] = 5;
+		robot_max[RobotType.MINERFACTORY.ordinal()] = 0;
 		robot_max[RobotType.MISSILE.ordinal()] = 0;
 		robot_max[RobotType.SOLDIER.ordinal()] = 0;
 		robot_max[RobotType.SUPPLYDEPOT.ordinal()] = 0;
@@ -167,18 +190,22 @@ public class Arobot {
 	}
 	
 	public void update_strategy() {
-		if(robot_census[RobotType.MINERFACTORY.ordinal()] == robot_max[RobotType.MINERFACTORY.ordinal()]){
-			robot_max[RobotType.HELIPAD.ordinal()] = 1;
-		}
-		
-		if(robot_census[RobotType.MINER.ordinal()] == robot_max[RobotType.MINER.ordinal()]){
+		if(robot_census[RobotType.BEAVER.ordinal()] == robot_max[RobotType.BEAVER.ordinal()] ){
 			robot_max[RobotType.DRONE.ordinal()] = 20;
-		}else{
-			robot_max[RobotType.DRONE.ordinal()] = 0;
 		}
 		
-		if(robot_controller.getTeamOre() > 1000){
-			robot_max[RobotType.HANDWASHSTATION.ordinal()] = 1;
+		if(robot_census[RobotType.DRONE.ordinal()] > 0 && robot_census[RobotType.DRONE.ordinal()] == robot_max[RobotType.DRONE.ordinal()] ){
+			robot_max[RobotType.MINERFACTORY.ordinal()] = 1;
+		}
+		
+		if(robot_census[RobotType.MINER.ordinal()] == robot_max[RobotType.MINER.ordinal()] ){
+			robot_max[RobotType.HELIPAD.ordinal()] = 2;
+			robot_max[RobotType.DRONE.ordinal()] = 900;
+		}		
+		
+		if(Clock.getRoundNum()> 1500){
+			swarm_trigger = 0;
+			all_out_attack = true;
 		}
 			
 	}
@@ -193,14 +220,38 @@ public class Arobot {
 		}
 	}	
 	
+
+	public void attack_deadest_enemy_in_range(){
+		if(my_type.canAttack()){
+			if(robot_controller.isWeaponReady()){
+				RobotInfo[] close_enemies = robot_controller.senseNearbyRobots(my_type.attackRadiusSquared, enemy_team);
+				if(close_enemies.length > 0){
+					int num_of_loops = close_enemies.length;
+					double enemy_health = 9999;
+					int attack_pos = 0;
+					for(int i=0; i< num_of_loops;i++){
+						if(close_enemies[i].health <= enemy_health || close_enemies[i].type == RobotType.MISSILE){
+							enemy_health = close_enemies[i].health;
+							attack_pos = i;
+						}
+					}
+					try{
+						robot_controller.attackLocation(close_enemies[0].location);
+					} catch (Exception e){
+						 print_exception(e);
+					}
+				}
+			}
+		}
+	}	
 	//basic combat ability to go in basic_turn_loop
 	public void attack_random_enemy_in_range(){
 		if(my_type.canAttack()){
 			if(robot_controller.isWeaponReady()){
-				RobotInfo[] sensed_enemy_robots = robot_controller.senseNearbyRobots(my_range,enemy_team);
-				if(sensed_enemy_robots.length > 0){
+				RobotInfo[] close_enemies = robot_controller.senseNearbyRobots(my_type.attackRadiusSquared, enemy_team);
+				if(close_enemies.length > 0){
 					try{
-						robot_controller.attackLocation(sensed_enemy_robots[0].location);
+						robot_controller.attackLocation(close_enemies[0].location);
 					} catch (Exception e){
 						 print_exception(e);
 					}
@@ -210,6 +261,9 @@ public class Arobot {
 	}
 	
 	public void send_supply(int amount, MapLocation location){
+		if(!(amount > 0))
+			return;
+		
 		try{		
 			robot_controller.transferSupplies(amount, location);
 		} catch (Exception e){
@@ -218,15 +272,90 @@ public class Arobot {
 	}
 		
 	public void count_the_troops(){
-		robot_census = new int[]{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-		RobotInfo[] sensed_friendly_Robots = robot_controller.senseNearbyRobots(999999, my_team);
 		
-		for (RobotInfo sensed_friendly_Robot : sensed_friendly_Robots) {
-				robot_census[sensed_friendly_Robot.type.ordinal()] ++;
+		int num_of_loops = robot_census.length;
+		for (int i=0; i<num_of_loops;i++){
+			try{
+				robot_census[i] = robot_controller.readBroadcast(troop_count_channel + i);
+			} catch (Exception e){
+				print_exception(e);
+			}			
+		}
+	}		
+	
+	public MapLocation find_closest(MapLocation starting_point, MapLocation[] possible_locations){
+		int closest_distance = 99999;
+		int pos_of_closest = 0;
+		
+		if(possible_locations == null)
+			return starting_point;
+		
+		if(possible_locations.length < 1){
+			return starting_point;
 		}
 		
-		robot_census[my_type.ordinal()] ++;
-	}		
+		for(int i=0; i< possible_locations.length;i++){
+			if(starting_point.distanceSquaredTo(possible_locations[i]) < closest_distance){
+				closest_distance = starting_point.distanceSquaredTo(possible_locations[i]);
+				pos_of_closest = i;
+			}
+		}
+		return possible_locations[pos_of_closest];
+	}
+	
+	public int location_channel(MapLocation encode_this_location){
+		MapLocation return_location = new MapLocation(((encode_this_location.x % HASH) + HASH) % HASH,((encode_this_location.y % HASH) + HASH) % HASH);	
+		return (return_location.x * HASH) + return_location.y;
+	}
+	public int encode_location(MapLocation encode_this_location){	
+		return (encode_this_location.x * HASH) + encode_this_location.y;
+	}
+	public MapLocation decode_location(int encoded_location){
+		int encoded_location_y = encoded_location % HASH;
+		int encoded_location_x = (encoded_location - encoded_location_y) / HASH;
+
+		return new MapLocation(encoded_location_x,encoded_location_y);
+	}	
+	
+	public void send_broadcast(int channel, int data){
+		try{
+			robot_controller.broadcast(channel, data);
+		} catch (Exception e){
+			print_exception(e);
+		}
+	}
+	
+	public int read_broadcast(int channel){
+		try{
+			return robot_controller.readBroadcast(channel);
+		} catch (Exception e){
+			print_exception(e);
+		}		
+		return 0;
+	}
+	
+	public void dish_out_supply(){	
+		int start_turn = Clock.getRoundNum();
+		double dish_out_amount;
+		if(all_out_attack){
+			dish_out_amount = robot_controller.getSupplyLevel();
+		}else{
+			dish_out_amount = 10;
+		}
+		RobotInfo[] sensed_friendly_robots = robot_controller.senseNearbyRobots(GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED, my_team);	
+		
+		if(sensed_friendly_robots.length < 1)
+			return;
+		
+		dish_out_amount /= sensed_friendly_robots.length;
+		for (final RobotInfo sensed_friendly_robot: sensed_friendly_robots){
+			if(robot_mobile[sensed_friendly_robot.type.ordinal()] || robot_mobile[my_type.ordinal()] ==false){
+				if(Clock.getRoundNum() > start_turn || Clock.getBytecodesLeft() < 550)
+					return;
+				send_supply((int)dish_out_amount, sensed_friendly_robot.location);
+			}
+		}
+	}
 	
 	public void print_exception(Exception e){
         System.out.println("Unexpected exception");

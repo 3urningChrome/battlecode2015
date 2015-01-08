@@ -1,7 +1,6 @@
-package Team111;
+package team111;
 
 import battlecode.common.RobotController;
-import battlecode.common.RobotType;
 
 public class TechnologyInstitute extends Building  {
 
