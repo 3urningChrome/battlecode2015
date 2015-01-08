@@ -33,7 +33,16 @@ public class Drone extends Mobile {
 				if(my_danger_level !=0){
 					evasive_move();
 				}else{
-					move_towards_direction(robot_controller.getLocation().directionTo(robot_controller.senseEnemyHQLocation()));
+					//move towards swarm location
+					try{
+						int swarm_location_int = robot_controller.readBroadcast(swarm_location_channel);
+						int swarm_location_x = swarm_location_int / HASH;
+						int swarm_location_y = swarm_location_int % HASH;
+						MapLocation swarm_location = HQ_location.add(swarm_location_x,swarm_location_y);
+						move_towards_direction(robot_controller.getLocation().directionTo(robot_controller.senseEnemyHQLocation()));
+					} catch(Exception e){
+						print_exception(e);
+					}
 				}
 			}
 						

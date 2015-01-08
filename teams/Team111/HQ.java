@@ -26,13 +26,33 @@ public class HQ extends Building  {
 			dish_out_supply();
 			update_strategy();			
 			check_for_spawns();	
-			calculate_danger_squares();				
+			calculate_danger_squares();	
+			assign_swarm_location();
 			robot_controller.yield();
 		}		
 	}	
 	
 	public void initialiseTowers(){
 		original_towers = robot_controller.senseEnemyTowerLocations();
+	}
+	
+	public void assign_swarm_location(){
+		//Nearest Emeny
+		int counter = 1;
+		while(true){
+			RobotInfo[] enemy_robots = robot_controller.senseNearbyRobots(counter*counter, enemy_team);
+			if(enemy_robots != null && enemy_robots.length > 0){
+				MapLocation swarm_location = enemy_robots[0].location;
+				int swarm_int_location = (swarm_location.x * HASH) + swarm_location.y;
+				try{
+					robot_controller.broadcast(swarm_location_channel,swarm_int_location);
+					return;
+				}catch (Exception e){
+					print_exception(e);
+				}
+			}
+			counter +=8;
+		}
 	}
 	
 

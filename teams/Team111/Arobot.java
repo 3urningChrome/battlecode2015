@@ -17,6 +17,7 @@ public class Arobot {
 	
 	static int my_range;
 	static int sensor_range;
+	static int swarm_location_channel = 1;
 	static double minimum_supply = 5;
 	static double mining_rate = 0;
 	static double mining_max = 0;
@@ -34,6 +35,7 @@ public class Arobot {
 
 		
 	static MapLocation HQ_location;
+	
 	
 	static final Direction[] directions = {Direction.NORTH, Direction.NORTH_EAST, Direction.EAST, Direction.SOUTH_EAST, Direction.SOUTH, Direction.SOUTH_WEST, Direction.WEST, Direction.NORTH_WEST};
 	static int directional_looks[] = new int[]{0,-1,1,-2,2,-3,3,4};
