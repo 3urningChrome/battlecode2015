@@ -1,5 +1,6 @@
 package team111;
 
+import battlecode.common.Clock;
 import battlecode.common.Direction;
 import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
@@ -11,6 +12,12 @@ public class HQ extends Building  {
 
 	static int num_of_towers_calculated = 0;
 	static MapLocation[] original_towers = null;
+	static boolean protect_tower = false;
+	MapLocation protect_location;
+	
+	static int turn_protected_area_last_attacked = 0;
+	static double last_health = 999999;
+	static int last_tower_id = 9999999;
 	
 	public HQ(RobotController rc) {
 		super(rc);
@@ -30,7 +37,7 @@ public class HQ extends Building  {
 			update_strategy();	
 			check_for_spawns();	
 			calculate_danger_squares();	
-			assign_swarm_location();
+			assign_locations();
 			dish_out_supply();
 			robot_controller.yield();
 		}		
@@ -44,8 +51,28 @@ public class HQ extends Building  {
 		robot_census = new int[]{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 		RobotInfo[] sensed_friendly_Robots = robot_controller.senseNearbyRobots(999999, my_team);
 		
+		protect_tower = false;
+		boolean protected_tower_still_alive = false;
 		for (RobotInfo sensed_friendly_Robot : sensed_friendly_Robots) {
 				robot_census[sensed_friendly_Robot.type.ordinal()] ++;
+				if(sensed_friendly_Robot.type.equals(RobotType.TOWER)){
+					if(sensed_friendly_Robot.ID == last_tower_id)
+						protected_tower_still_alive = true;
+					
+					if(sensed_friendly_Robot.health < RobotType.TOWER.maxHealth){
+						protect_tower = true;
+						protect_location = sensed_friendly_Robot.location;
+						if(sensed_friendly_Robot.health < last_health){
+							turn_protected_area_last_attacked = Clock.getRoundNum();
+							last_health = sensed_friendly_Robot.health;
+							last_tower_id = sensed_friendly_Robot.ID;
+						}
+					}
+				}
+		}
+		if(!protected_tower_still_alive){
+			last_health = 999999;
+			last_tower_id = 9999999;			
 		}
 		
 		robot_census[my_type.ordinal()] ++;
@@ -56,44 +83,61 @@ public class HQ extends Building  {
 		}
 	}	
 	
-	public void assign_swarm_location(){
+	public void assign_locations(){
 		
 		int total_fighting_robots = 0;
 		total_fighting_robots += robot_census[RobotType.BASHER.ordinal()];
 		total_fighting_robots += robot_census[RobotType.COMMANDER.ordinal()];
 		total_fighting_robots += robot_census[RobotType.DRONE.ordinal()];
-		total_fighting_robots += robot_census[RobotType.LAUNCHER.ordinal()];
+	//	total_fighting_robots += robot_census[RobotType.LAUNCHER.ordinal()];
 		total_fighting_robots += robot_census[RobotType.SOLDIER.ordinal()];
 		total_fighting_robots += robot_census[RobotType.TANK.ordinal()];
 		
 		MapLocation the_starting_point;
 		MapLocation[] the_towers;
+		MapLocation swarm_location;
 		
-		if(total_fighting_robots < swarm_trigger){
-			System.out.println("Target HQ");	
-			//Nearest My Tower to enemy HQ until swarm point
-			//the_towers = robot_controller.senseTowerLocations();
-			the_starting_point = enemy_HQ_Location;		
-			the_towers = new MapLocation[]{enemy_HQ_Location};
-		}else{
-			//once swarm point, launch against nearest enemy tower.
-			the_towers = robot_controller.senseEnemyTowerLocations();
-			System.out.println("Target Towers (" + the_towers.length + ")");
-			the_starting_point = HQ_location;
-			// if no towers left. head for enemy HQ
-			if(the_towers.length < 1){
+		if(protect_tower && (Clock.getRoundNum() - turn_protected_area_last_attacked) < 20){
+			swarm_location = protect_location;
+			//swarm_location = swarm_location.add(swarm_location.directionTo(enemy_HQ_Location), 2);
+			send_broadcast(swarm_location_channel_x,swarm_location.x);
+			send_broadcast(swarm_location_channel_y,swarm_location.y);	
+			send_broadcast(override_saftey, 1);			
+		} else{
+			if(total_fighting_robots < swarm_trigger){
+				//Nearest My Tower to enemy HQ until swarm point
+				//the_towers = robot_controller.senseTowerLocations();
+				the_starting_point = enemy_HQ_Location;		
 				the_towers = new MapLocation[]{enemy_HQ_Location};
+				swarm_location = find_closest(the_starting_point,the_towers);
+				send_broadcast(swarm_location_channel_x,swarm_location.x);
+				send_broadcast(swarm_location_channel_y,swarm_location.y);	
+			
+				//set defence post
+				the_towers = robot_controller.senseTowerLocations();
+				the_starting_point = enemy_HQ_Location;
+				// if no towers left. head for enemy HQ
+				if(the_towers.length < 1){
+					the_towers = new MapLocation[]{enemy_HQ_Location};
+				}
+				swarm_location = find_closest(the_starting_point,the_towers);
+				send_broadcast(defence_location_channel_x,swarm_location.x);
+				send_broadcast(defence_location_channel_y,swarm_location.y);	
+			
+			}else{
+				//once swarm point, launch against nearest enemy tower.
+				the_towers = robot_controller.senseEnemyTowerLocations();
+				the_starting_point = HQ_location;
+				// if no towers left. head for enemy HQ
+				if(the_towers.length < 1)
+					the_towers = new MapLocation[]{enemy_HQ_Location};
+				
+				swarm_location = find_closest(the_starting_point,the_towers);
+				send_broadcast(swarm_location_channel_x,swarm_location.x);
+				send_broadcast(swarm_location_channel_y,swarm_location.y);	
 			}
+			send_broadcast(override_saftey, 0);	
 		}
-		MapLocation swarm_location = find_closest(the_starting_point,the_towers);
-		//System.out.println("Set Swarm Location: "  + swarm_location.toString());
-		try{
-			robot_controller.broadcast(swarm_location_channel_x,swarm_location.x);
-			robot_controller.broadcast(swarm_location_channel_y,swarm_location.y);
-			return;
-		}catch (Exception e){
-			print_exception(e);
-		}			
 	}
 	
 

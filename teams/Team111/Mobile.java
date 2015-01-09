@@ -13,11 +13,16 @@ public class Mobile extends Arobot {
 	int my_danger_level = 0;
 	int count_down = 35;
 	
+	int location_channel_x;
+	int location_channel_y;
+	
 	public Mobile(RobotController rc){
 		super(rc);
 		my_max_supply_level = max_mobile_supply_level;
 		my_min_supply_level = min_mobile_supply_level;
 		my_optimal_supply_level = optimal_mobile_supply_level;		
+		location_channel_x  = swarm_location_channel_x;
+		location_channel_y  = swarm_location_channel_y;
 	}
 	
 	public void basic_turn_loop(){
@@ -30,11 +35,15 @@ public class Mobile extends Arobot {
 			if(robot_controller.isCoreReady()){
 				set_my_danger_level();
 				
+				if(read_broadcast(override_saftey) == 1){
+					all_out_attack = true;
+				}
+				
 				//if(Clock.getRoundNum() > 1600){
 				if(all_out_attack){
 					count_down --;
 				}else{
-					count_down = 50;
+					count_down = 25;
 				}
 				if(count_down < 1){
 					danger_levels = new int[]{0,0,0,0,0,0,0,0};	
@@ -57,10 +66,10 @@ public class Mobile extends Arobot {
 					attack_deadest_enemy_in_range();
 				} else{
 					if(!attack_deadest_enemy_in_range() && robot_controller.isWeaponReady()){
-						int swarm_location_x = read_broadcast(swarm_location_channel_x);
-						int swarm_location_y = read_broadcast(swarm_location_channel_y);
-						MapLocation swarm_location = new MapLocation(swarm_location_x,swarm_location_y);
-						move_towards_direction(robot_controller.getLocation().directionTo(swarm_location));
+						int location_x = read_broadcast(location_channel_x);
+						int location_y = read_broadcast(location_channel_y);
+						MapLocation location = new MapLocation(location_x,location_y);
+						move_towards_direction(robot_controller.getLocation().directionTo(location));
 					}
 				}
 			}

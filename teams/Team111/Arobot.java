@@ -20,8 +20,11 @@ public class Arobot {
 	static int sensor_range;
 	static int swarm_location_channel_x = 1;
 	static int swarm_location_channel_y = 2;
-	static int troop_count_channel  =3; // (to 23)
-	static int next_available_channel = 24;
+	static int defence_location_channel_x = 3;
+	static int defence_location_channel_y = 4;	
+	static int override_saftey = 5;
+	static int troop_count_channel = 7; // (to 25)
+	static int next_available_channel = 29;
 	static int swarm_trigger = 900;
 	static boolean all_out_attack =false;
 	
@@ -172,15 +175,15 @@ public class Arobot {
 	private void initialise_default_strategy() {
 		robot_max[RobotType.AEROSPACELAB.ordinal()] = 0;
 		robot_max[RobotType.BARRACKS.ordinal()] = 0;
-		robot_max[RobotType.BASHER.ordinal()] = 0;
+		robot_max[RobotType.BASHER.ordinal()] = 4;
 		robot_max[RobotType.BEAVER.ordinal()] = 1;
-		robot_max[RobotType.COMMANDER.ordinal()] = 0;
+		robot_max[RobotType.COMMANDER.ordinal()] = 1;
 		robot_max[RobotType.COMPUTER.ordinal()] = 0;
 		robot_max[RobotType.DRONE.ordinal()] = 0;
 		robot_max[RobotType.HANDWASHSTATION.ordinal()] = 0;
 		robot_max[RobotType.HELIPAD.ordinal()] = 1;
 		robot_max[RobotType.HQ.ordinal()] = 0;
-		robot_max[RobotType.LAUNCHER.ordinal()] = 0;
+		robot_max[RobotType.LAUNCHER.ordinal()] = 2;
 		robot_max[RobotType.MINER.ordinal()] = 5;
 		robot_max[RobotType.MINERFACTORY.ordinal()] = 0;
 		robot_max[RobotType.MISSILE.ordinal()] = 0;
@@ -193,9 +196,65 @@ public class Arobot {
 		robot_max[RobotType.TRAININGFIELD.ordinal()] = 0;	
 	}
 	
-	public void update_strategy() {
+	public void update_strategy(){
+		 update_strategy_drone_rush();
+	}
+	public void update_strategy_drone_rush() {
 		if(robot_census[RobotType.BEAVER.ordinal()] == robot_max[RobotType.BEAVER.ordinal()] ){
-			robot_max[RobotType.DRONE.ordinal()] = 20;
+			robot_max[RobotType.DRONE.ordinal()] = 10;
+		}
+		if(robot_census[RobotType.HELIPAD.ordinal()] == robot_max[RobotType.HELIPAD.ordinal()] ){
+			robot_max[RobotType.BEAVER.ordinal()] = 3;
+		}		
+		
+		if(robot_census[RobotType.DRONE.ordinal()] > 0 && robot_census[RobotType.DRONE.ordinal()] == robot_max[RobotType.DRONE.ordinal()] ){
+			robot_max[RobotType.MINERFACTORY.ordinal()] = 1;
+		}
+		
+		if(robot_census[RobotType.MINER.ordinal()] == robot_max[RobotType.MINER.ordinal()] && robot_census[RobotType.AEROSPACELAB.ordinal()] == robot_max[RobotType.AEROSPACELAB.ordinal()]){
+			robot_max[RobotType.HELIPAD.ordinal()] = 2;
+			robot_max[RobotType.DRONE.ordinal()] = 900;
+		}	
+		
+		if(robot_controller.getTeamOre() > 600){
+			robot_max[RobotType.MINER.ordinal()] +=1;
+			robot_max[RobotType.LAUNCHER.ordinal()] +=1;
+			robot_max[RobotType.AEROSPACELAB.ordinal()]=1;
+		}
+		
+		if(robot_controller.getTeamOre() > 1000){
+			robot_max[RobotType.HELIPAD.ordinal()]+=1;
+		}
+		if(robot_controller.getTeamOre() > 1300){
+			robot_max[RobotType.BEAVER.ordinal()]+=1;
+		}
+		
+		int num_of_towers = robot_controller.senseEnemyTowerLocations().length + 3;
+		int swarm_attack = Math.max((num_of_towers * 6),20);
+		int swarm_retreat = num_of_towers * 4;
+		if(robot_census[RobotType.DRONE.ordinal()] > swarm_attack){
+			swarm_trigger = 0;
+			all_out_attack = true;
+		}
+		if(robot_census[RobotType.DRONE.ordinal()] < swarm_retreat){
+			swarm_trigger = 900;
+			all_out_attack = false;
+		}		
+		
+		if(Clock.getRoundNum()> 1850){
+			swarm_trigger = 0;
+			all_out_attack = true;
+			robot_max[RobotType.HANDWASHSTATION.ordinal()] = 100;
+			
+		}
+		if(Clock.getRoundNum()> 1880){
+			robot_max[RobotType.DRONE.ordinal()] = 0;
+		}
+			
+	}
+	public void update_strategy_basher_defence() {
+		if(robot_census[RobotType.BEAVER.ordinal()] == robot_max[RobotType.BEAVER.ordinal()] ){
+			robot_max[RobotType.DRONE.ordinal()] = 14;
 		}
 		
 		if(robot_census[RobotType.DRONE.ordinal()] > 0 && robot_census[RobotType.DRONE.ordinal()] == robot_max[RobotType.DRONE.ordinal()] ){
@@ -226,6 +285,42 @@ public class Arobot {
 		}
 			
 	}
+	
+	public void update_strategy_missile_attack() {
+		if(robot_census[RobotType.BEAVER.ordinal()] == robot_max[RobotType.BEAVER.ordinal()] ){
+			robot_max[RobotType.DRONE.ordinal()] = 12;
+		}
+		
+		if(robot_census[RobotType.DRONE.ordinal()] > 0 && robot_census[RobotType.DRONE.ordinal()] == robot_max[RobotType.DRONE.ordinal()] ){
+			robot_max[RobotType.MINERFACTORY.ordinal()] = 1;
+		}
+		
+		if(robot_census[RobotType.MINER.ordinal()] == robot_max[RobotType.MINER.ordinal()] ){
+			robot_max[RobotType.AEROSPACELAB.ordinal()] = 2;
+			robot_max[RobotType.LAUNCHER.ordinal()] = 900;
+		}	
+		
+		int num_of_towers = robot_controller.senseEnemyTowerLocations().length + 3;
+		int swarm_attack = 10;
+		int swarm_retreat = 5;
+		if(robot_census[RobotType.LAUNCHER.ordinal()] > swarm_attack){
+			swarm_trigger = 0;
+			all_out_attack = true;
+		}
+		if(robot_census[RobotType.LAUNCHER.ordinal()] < swarm_retreat){
+			swarm_trigger = 900;
+			all_out_attack = false;
+		}		
+		
+		if(Clock.getRoundNum()> 1850){
+			swarm_trigger = 0;
+			all_out_attack = true;
+			robot_max[RobotType.HANDWASHSTATION.ordinal()] = 100;
+		}
+			
+	}
+	
+
 
 	//Should override this if you actually want the robot to do something other than very basic acts.
 	//also this will not be very efficient. just simple and guaranteed to work for any RobotType.
@@ -241,19 +336,41 @@ public class Arobot {
 	public boolean attack_deadest_enemy_in_range(){
 		if(my_type.canAttack()){
 			if(robot_controller.isWeaponReady()){
-				RobotInfo[] close_enemies = robot_controller.senseNearbyRobots(my_type.attackRadiusSquared, enemy_team);
+				int attack_radius = my_type.attackRadiusSquared;
+				if(my_type.equals(RobotType.HQ)){
+					MapLocation[] my_towers = robot_controller.senseTowerLocations();
+					boolean hq_splash = false;
+					switch(my_towers.length){
+					case 6:
+					case 5:
+						hq_splash = true;	
+					case 4:
+					case 3:
+					case 2:
+						attack_radius = GameConstants.HQ_BUFFED_ATTACK_RADIUS_SQUARED;
+					default:
+						break;		
+					}
+					int offset = (int) Math.sqrt(attack_radius);
+					if(hq_splash){
+						offset+=1;
+						attack_radius = (offset) * (offset);
+					}
+				}
+				RobotInfo[] close_enemies = robot_controller.senseNearbyRobots(attack_radius, enemy_team);
 				if(close_enemies.length > 0){
 					int num_of_loops = close_enemies.length;
 					double enemy_health = 9999;
 					int attack_pos = 0;
 					for(int i=0; i< num_of_loops;i++){
-						if(close_enemies[i].health <= enemy_health || close_enemies[i].type == RobotType.MISSILE){
+						//if(close_enemies[i].health <= enemy_health || close_enemies[i].type == RobotType.MISSILE){
+						if(close_enemies[i].health <= enemy_health){
 							enemy_health = close_enemies[i].health;
 							attack_pos = i;
 						}
 					}
 					try{
-						robot_controller.attackLocation(close_enemies[attack_pos].location);
+							robot_controller.attackLocation(close_enemies[attack_pos].location);
 						return true;
 					} catch (Exception e){
 						 print_exception(e);
