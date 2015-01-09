@@ -27,7 +27,7 @@ public class Building extends Arobot {
 				update_strategy();	
 				check_for_spawns();	
 			}	
-			if(all_out_attack)
+		//	if(all_out_attack)
 				dish_out_supply();
 			robot_controller.yield();
 		}		

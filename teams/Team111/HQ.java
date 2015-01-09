@@ -102,6 +102,8 @@ public class HQ extends Building  {
 		
 		if(enemy_towers.length == num_of_towers_calculated)
 			return;
+		if(enemy_towers.length < num_of_towers_calculated )
+			clear_hq_tower_data();
 		
 		num_of_towers_calculated = enemy_towers.length;
 		
@@ -112,21 +114,22 @@ public class HQ extends Building  {
 		boolean hq_splash = false;
 		
 		switch(enemy_towers.length){
-		case 2:
-			hq_attack_range = GameConstants.HQ_BUFFED_ATTACK_RADIUS_SQUARED;
-		case 3:
-			hq_attack_damage = RobotType.HQ.attackPower * 1.5;
-		case 5:
-			hq_splash = true;
 		case 6:
 			hq_attack_damage = RobotType.HQ.attackPower * 10;
+		case 5:
+			hq_splash = true;
+		case 3:
+			hq_attack_damage = RobotType.HQ.attackPower * 1.5;			
+		case 2:
+			hq_attack_range = GameConstants.HQ_BUFFED_ATTACK_RADIUS_SQUARED;
+			
 		default:
 			break;		
 		}
-		
 		int offset = (int) Math.sqrt(hq_attack_range+1);
 		if(hq_splash){
-			hq_attack_range = (offset+1) * (offset+1);
+			offset+=2;
+			hq_attack_range = (offset) * (offset);
 		}
 		int num_of_loops = 2 * offset;
 		for(int x=0; x<num_of_loops; x++){
@@ -146,7 +149,7 @@ public class HQ extends Building  {
 				for(int y=0; y<num_of_loops;y++){
 					MapLocation testLocation = enemy_tower.add(x - offset, y - offset);
 					if(enemy_tower.distanceSquaredTo(testLocation) <= RobotType.TOWER.attackRadiusSquared){	
-						send_broadcast(static_broadcast_offset + location_channel(testLocation), (int) RobotType.TOWER.attackRadiusSquared);						
+						send_broadcast(static_broadcast_offset + location_channel(testLocation), (int) RobotType.TOWER.attackPower);						
 					}
 				}
 			}
@@ -154,13 +157,13 @@ public class HQ extends Building  {
 	}
 	
 	public void clear_hq_tower_data(){
-		int offset = (int) Math.sqrt(GameConstants.HQ_BUFFED_ATTACK_RADIUS_SQUARED+1);
+		int offset = (int) Math.sqrt(GameConstants.HQ_BUFFED_ATTACK_RADIUS_SQUARED+1) + 2;
 		int num_of_loops = 2 * offset;
 		for(int x=0; x<num_of_loops; x++){
 			for(int y=0; y<num_of_loops;y++){
 				MapLocation testLocation = enemy_HQ_Location.add(x - offset, y - offset);
-				if(HQ_location.distanceSquaredTo(testLocation) <= GameConstants.HQ_BUFFED_ATTACK_RADIUS_SQUARED){	
-					send_broadcast(static_broadcast_offset + location_channel(testLocation),(int) GameConstants.HQ_BUFFED_ATTACK_RADIUS_SQUARED);				
+				if(HQ_location.distanceSquaredTo(testLocation) <= (offset * offset)){	
+					send_broadcast(static_broadcast_offset + location_channel(testLocation),0);				
 				}
 			}
 		}
@@ -173,7 +176,7 @@ public class HQ extends Building  {
 				for(int y=0; y<num_of_loops;y++){
 					MapLocation testLocation = enemy_tower.add(x - offset, y - offset);
 					if(enemy_tower.distanceSquaredTo(testLocation) <= RobotType.TOWER.attackRadiusSquared){	
-						send_broadcast(static_broadcast_offset + location_channel(testLocation),(int) RobotType.TOWER.attackRadiusSquared);					
+						send_broadcast(static_broadcast_offset + location_channel(testLocation),0);					
 					}
 				}
 			}

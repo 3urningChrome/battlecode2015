@@ -57,8 +57,8 @@ public class Arobot {
 	RobotInfo[] sensed_enemy_robots;
 	
 	
-	static final Direction[] directions = {Direction.NORTH, Direction.NORTH_EAST, Direction.EAST, Direction.SOUTH_EAST, Direction.SOUTH, Direction.SOUTH_WEST, Direction.WEST, Direction.NORTH_WEST};
-	static int directional_looks[] = new int[]{0,-1,1,-2,2,-3,3,4};
+	static Direction[] directions = {Direction.NORTH, Direction.NORTH_EAST, Direction.EAST, Direction.SOUTH_EAST, Direction.SOUTH, Direction.SOUTH_WEST, Direction.WEST, Direction.NORTH_WEST};
+	static int[] directional_looks = new int[]{0,-1,1,-2,2,-3,3,4};
 		
 	public Arobot(RobotController rc){
 		robot_controller = rc;
@@ -73,6 +73,10 @@ public class Arobot {
 		
 		initialise_default_strategy();
 		initialise_spawn_build_list();
+		
+		if(robot_controller.getID()%2 == 1){
+			directional_looks = new int[]{0,1,-1,2,-2,3,-3,4};
+		}
 		
 		int num_of_loops = robot_types_ordinals.length;
 		RobotType[] all_robots = RobotType.values();
@@ -201,11 +205,24 @@ public class Arobot {
 		if(robot_census[RobotType.MINER.ordinal()] == robot_max[RobotType.MINER.ordinal()] ){
 			robot_max[RobotType.HELIPAD.ordinal()] = 2;
 			robot_max[RobotType.DRONE.ordinal()] = 900;
-		}		
+		}	
 		
-		if(Clock.getRoundNum()> 1500){
+		int num_of_towers = robot_controller.senseEnemyTowerLocations().length + 3;
+		int swarm_attack = Math.max((num_of_towers * 6),20);
+		int swarm_retreat = num_of_towers * 4;
+		if(robot_census[RobotType.DRONE.ordinal()] > swarm_attack){
 			swarm_trigger = 0;
 			all_out_attack = true;
+		}
+		if(robot_census[RobotType.DRONE.ordinal()] < swarm_retreat){
+			swarm_trigger = 900;
+			all_out_attack = false;
+		}		
+		
+		if(Clock.getRoundNum()> 1850){
+			swarm_trigger = 0;
+			all_out_attack = true;
+			robot_max[RobotType.HANDWASHSTATION.ordinal()] = 100;
 		}
 			
 	}
@@ -221,7 +238,7 @@ public class Arobot {
 	}	
 	
 
-	public void attack_deadest_enemy_in_range(){
+	public boolean attack_deadest_enemy_in_range(){
 		if(my_type.canAttack()){
 			if(robot_controller.isWeaponReady()){
 				RobotInfo[] close_enemies = robot_controller.senseNearbyRobots(my_type.attackRadiusSquared, enemy_team);
@@ -236,13 +253,15 @@ public class Arobot {
 						}
 					}
 					try{
-						robot_controller.attackLocation(close_enemies[0].location);
+						robot_controller.attackLocation(close_enemies[attack_pos].location);
+						return true;
 					} catch (Exception e){
 						 print_exception(e);
 					}
 				}
 			}
 		}
+		return false;
 	}	
 	//basic combat ability to go in basic_turn_loop
 	public void attack_random_enemy_in_range(){
@@ -340,7 +359,7 @@ public class Arobot {
 		if(all_out_attack){
 			dish_out_amount = robot_controller.getSupplyLevel();
 		}else{
-			dish_out_amount = 10;
+			dish_out_amount = 0;
 		}
 		RobotInfo[] sensed_friendly_robots = robot_controller.senseNearbyRobots(GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED, my_team);	
 		
@@ -349,10 +368,12 @@ public class Arobot {
 		
 		dish_out_amount /= sensed_friendly_robots.length;
 		for (final RobotInfo sensed_friendly_robot: sensed_friendly_robots){
-			if(robot_mobile[sensed_friendly_robot.type.ordinal()] || robot_mobile[my_type.ordinal()] ==false){
-				if(Clock.getRoundNum() > start_turn || Clock.getBytecodesLeft() < 550)
-					return;
-				send_supply((int)dish_out_amount, sensed_friendly_robot.location);
+			if(robot_mobile[sensed_friendly_robot.type.ordinal()] || robot_mobile[my_type.ordinal()] ==false){		
+				if(!sensed_friendly_robot.type.equals(RobotType.BEAVER) && !sensed_friendly_robot.type.equals(RobotType.MINER) && !sensed_friendly_robot.type.equals(RobotType.HQ)){
+					if(Clock.getRoundNum() > start_turn || Clock.getBytecodesLeft() < 550)
+						return;					
+					send_supply((int)dish_out_amount, sensed_friendly_robot.location);
+				}
 			}
 		}
 	}
