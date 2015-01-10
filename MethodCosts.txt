@@ -20,6 +20,7 @@ battlecode/common/RobotController/canLaunch                   10    true
 battlecode/common/RobotController/canMine                     10    true
 battlecode/common/RobotController/canMove                     10    true
 battlecode/common/RobotController/canSenseLocation            5     true
+battlecode/common/RobotController/canSenseRobot               5     true
 battlecode/common/RobotController/canSpawn                    10    true
 battlecode/common/RobotController/castFlash                   0     true
 battlecode/common/RobotController/checkDependencyProgress     40    true
@@ -57,6 +58,7 @@ battlecode/common/RobotController/senseEnemyTowerLocations    100   true
 battlecode/common/RobotController/senseHQLocation             10    true
 battlecode/common/RobotController/senseNearbyRobots           100   true
 battlecode/common/RobotController/senseOre                    5     true
+battlecode/common/RobotController/senseRobot                  25    true
 battlecode/common/RobotController/senseRobotAtLocation        25    true
 battlecode/common/RobotController/senseTerrainTile            10    true
 battlecode/common/RobotController/senseTowerLocations         20    true

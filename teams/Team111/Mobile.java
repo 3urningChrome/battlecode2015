@@ -6,8 +6,11 @@ import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotType;
+import battlecode.common.TerrainTile;
 
 public class Mobile extends Arobot {
+	
+	MapLocation location;
 	
 	int[] danger_levels = {0,0,0,0,0,0,0,0};
 	int my_danger_level = 0;
@@ -16,6 +19,21 @@ public class Mobile extends Arobot {
 	int location_channel_x;
 	int location_channel_y;
 	
+	public int bugging_direction = 1;
+	public int turns_bugging = 0;
+	private int bugging_threshold = 20;
+	public boolean i_am_not_bugging = true;
+	public boolean i_have_stopped_bugging = false;	
+	public boolean i_have_started_bugging = false;
+	
+	public MapLocation destination = null;
+	
+	private Direction current_heading = Direction.NONE;
+	private Direction evaluate_heading = Direction.NONE;
+	
+	static int bugging_directional_looks[] = new int[]{1,0,-1,-2,-3,-4,-5,-6,-7};
+	static int non_bugging_directional_looks[] = new int[]{0,1,-1};
+	
 	public Mobile(RobotController rc){
 		super(rc);
 		my_max_supply_level = max_mobile_supply_level;
@@ -23,6 +41,7 @@ public class Mobile extends Arobot {
 		my_optimal_supply_level = optimal_mobile_supply_level;		
 		location_channel_x  = swarm_location_channel_x;
 		location_channel_y  = swarm_location_channel_y;
+		destination = HQ_location;
 	}
 	
 	public void basic_turn_loop(){
@@ -68,8 +87,15 @@ public class Mobile extends Arobot {
 					if(!attack_deadest_enemy_in_range() && robot_controller.isWeaponReady()){
 						int location_x = read_broadcast(location_channel_x);
 						int location_y = read_broadcast(location_channel_y);
-						MapLocation location = new MapLocation(location_x,location_y);
-						move_towards_direction(robot_controller.getLocation().directionTo(location));
+						location = new MapLocation(location_x,location_y);
+						//move_towards_direction(robot_controller.getLocation().directionTo(location));
+						if(location.equals(enemy_HQ_Location)){
+							pick_HQ_sub_location();
+						}
+						
+						reset_simple_bug(location);
+						simpleBug();
+						applyMove();
 					}
 				}
 			}
@@ -80,10 +106,60 @@ public class Mobile extends Arobot {
 		}		
 	}
 	
+	public void pick_HQ_sub_location(){
+		//points around HQ
+		MapLocation orig_location = location;
+		Direction start_direction = enemy_HQ_Location.directionTo(HQ_location);
+		MapLocation[] enemy_towers = robot_controller.senseEnemyTowerLocations();		
+		int hq_attack_range = RobotType.HQ.attackRadiusSquared;
+		boolean hq_splash = false;
+		
+		switch(enemy_towers.length){
+		case 6:
+		case 5:
+			hq_splash = true;
+		case 4:
+		case 3:			
+		case 2:
+			hq_attack_range = GameConstants.HQ_BUFFED_ATTACK_RADIUS_SQUARED;
+		default:
+			break;		
+		}
+		int offset = (int) Math.sqrt(hq_attack_range+1);
+		if(hq_splash){
+			offset+=2;
+			hq_attack_range = (offset) * (offset);
+		}
+		
+		MapLocation test_point = enemy_HQ_Location.add(start_direction,hq_attack_range);
+		TerrainTile test_terrain = robot_controller.senseTerrainTile(test_point);
+		try{
+			for(int i=0; i<8; i++){
+				if(((robot_controller.canSenseLocation(test_point) && robot_controller.senseRobotAtLocation(test_point) == null) || robot_controller.canSenseLocation(test_point)) && !test_terrain.equals(TerrainTile.OFF_MAP)){
+					location = test_point;
+					return;
+				}
+				start_direction = start_direction.rotateRight();
+				test_point = enemy_HQ_Location.add(start_direction,hq_attack_range);
+				test_terrain = robot_controller.senseTerrainTile(test_point);
+			}
+				
+		} catch(Exception e){
+			print_exception(e);
+		}
+		//point closest to my HQ. then go clockwise
+			// so long as it's not offmap
+			// so long as it's not in exclusion zone.
+		//location = HQ_location;
+		location = orig_location;
+	}
 	
 	public void evasive_move(){
-		if(!move_towards_direction(robot_controller.getLocation().directionTo(HQ_location)))
-			move(robot_controller.getLocation().directionTo(HQ_location));
+		//if(!move_towards_direction(robot_controller.getLocation().directionTo(HQ_location)))
+		//	move(robot_controller.getLocation().directionTo(HQ_location));
+		reset_simple_bug(HQ_location);
+		simpleBug();
+		applyMove();
 	}
 	
 	public void set_my_danger_level(){
@@ -231,4 +307,96 @@ public class Mobile extends Arobot {
 						}
 		return false;
 	}		
+	
+	public Direction simpleBug(){
+		if(i_am_not_bugging){
+			for(int directionalOffset:non_bugging_directional_looks){
+				evaluate_heading = directions[(current_heading.ordinal()+(directionalOffset*bugging_direction)+8)%8];
+				if(can_move(evaluate_heading))
+					return evaluate_heading;
+			}
+			i_have_started_bugging = true;	
+		}
+		i_am_not_bugging = false;
+		turns_bugging++;
+		for(int directionalOffset:bugging_directional_looks){
+			evaluate_heading = directions[(current_heading.ordinal()+(directionalOffset*bugging_direction)+8)%8];
+			if(can_move(evaluate_heading))
+				return evaluate_heading;
+		}		
+		evaluate_heading = Direction.NONE;
+		return evaluate_heading;
+	}	
+
+	public void applyMove(){
+		current_heading = evaluate_heading;
+		move(current_heading);
+			
+		i_have_started_bugging = false;
+		i_have_stopped_bugging = false;
+		
+		if(i_am_not_bugging){
+			current_heading = robot_controller.getLocation().directionTo(destination);
+		} else{
+			if (current_heading.equals(robot_controller.getLocation().directionTo(destination))){
+				i_am_not_bugging = true;
+				i_have_stopped_bugging = true;				
+				turns_bugging = 0;
+			}
+			if(turns_bugging > bugging_threshold)
+				bugging_direction *= -1;
+		}
+	}
+	
+	public boolean can_move(Direction move_direction){	
+		if(terrain_is_impassable(move_direction))
+			return false;
+		if(space_is_occupied(move_direction))
+			return false;
+		if(danger_levels[move_direction.ordinal()] > 0)
+			return false;
+		return true;
+	}
+
+	public boolean terrain_is_impassable(Direction move_direction){
+		MapLocation next_move = robot_controller.getLocation().add(move_direction);
+		TerrainTile test_terrain = robot_controller.senseTerrainTile(next_move);
+		if(test_terrain.equals(TerrainTile.NORMAL))
+			return false;
+		if(test_terrain.equals(TerrainTile.OFF_MAP))
+			return true;
+		if(test_terrain.equals(TerrainTile.VOID) && (robot_controller.getType().equals(RobotType.DRONE) || robot_controller.getType().equals(RobotType.MISSILE)))
+			return false;
+		if(test_terrain.equals(TerrainTile.VOID))
+			return true;
+		
+		return false;
+	}
+	
+	//Not even sure if this should be checked here....
+	public boolean space_is_occupied(Direction move_direction){
+		try{
+			return robot_controller.isLocationOccupied(robot_controller.getLocation().add(move_direction));
+		}catch(Exception e){
+			System.out.println("Exception in bug space_is_occupied");
+		}
+		return false;	
+	}
+	
+	public void reset_simple_bug(MapLocation the_destination){
+		if(destination != null && destination.equals(the_destination))
+				return;
+		
+		bugging_direction = 1;
+		turns_bugging = 0;
+		bugging_threshold = 20;
+		i_am_not_bugging = true;
+		i_have_stopped_bugging = false;	
+		i_have_started_bugging = false;
+
+		current_heading = Direction.NONE;
+		evaluate_heading = Direction.NONE;
+		
+		destination = the_destination;
+	}
 }

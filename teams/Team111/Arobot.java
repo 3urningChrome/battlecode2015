@@ -77,9 +77,9 @@ public class Arobot {
 		initialise_default_strategy();
 		initialise_spawn_build_list();
 		
-		if(robot_controller.getID()%2 == 1){
-			directional_looks = new int[]{0,1,-1,2,-2,3,-3,4};
-		}
+//		if(robot_controller.getID()%2 == 1){
+//			directional_looks = new int[]{0,1,-1,2,-2,3,-3,4};
+//		}
 		
 		int num_of_loops = robot_types_ordinals.length;
 		RobotType[] all_robots = RobotType.values();
