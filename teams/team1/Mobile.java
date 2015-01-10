@@ -1,5 +1,6 @@
-package team111;
+package team1;
 
+import battlecode.common.Clock;
 import battlecode.common.Direction;
 import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
@@ -68,35 +69,94 @@ public class Mobile extends Arobot {
 					my_danger_level = 0;
 				}
 				if(my_danger_level == 0){
+					//if(Clock.getRoundNum()%5 == 0){
 						count_the_troops();
 						update_strategy();	
 						check_for_builds();							
+					//}	
 				}
 				
 				if(my_danger_level !=0){
 					evasive_move();
+					attack_deadest_enemy_in_range();
 				} else if(robot_controller.canMine()){
 					evaluate_mining_position();
 					go_mining();
+					attack_deadest_enemy_in_range();
 				} else{
 					if(!attack_deadest_enemy_in_range() && robot_controller.isWeaponReady()){
 						int location_x = read_broadcast(location_channel_x);
 						int location_y = read_broadcast(location_channel_y);
 						location = new MapLocation(location_x,location_y);
-						//move_towards_direction(robot_controller.getLocation().directionTo(location));				
+						//move_towards_direction(robot_controller.getLocation().directionTo(location));
+						if(location.equals(enemy_HQ_Location)){
+							pick_HQ_sub_location();
+						}
+						
 						reset_simple_bug(location);
 						simpleBug();
 						applyMove();
 					}
 				}
 			}
-			dish_out_supply();
-			attack_deadest_enemy_in_range();
+			//attack_random_enemy_in_range();
+			//if(all_out_attack)
+				dish_out_supply();
 			robot_controller.yield();
 		}		
 	}
+	
+	public void pick_HQ_sub_location(){
+		//points around HQ
+		MapLocation orig_location = location;
+		Direction start_direction = enemy_HQ_Location.directionTo(HQ_location);
+		MapLocation[] enemy_towers = robot_controller.senseEnemyTowerLocations();		
+		int hq_attack_range = RobotType.HQ.attackRadiusSquared;
+		boolean hq_splash = false;
 		
+		switch(enemy_towers.length){
+		case 6:
+		case 5:
+			hq_splash = true;
+		case 4:
+		case 3:			
+		case 2:
+			hq_attack_range = GameConstants.HQ_BUFFED_ATTACK_RADIUS_SQUARED;
+		default:
+			break;		
+		}
+		int offset = (int) Math.sqrt(hq_attack_range+1);
+		if(hq_splash){
+			offset+=2;
+			hq_attack_range = (offset) * (offset);
+		}
+		
+		MapLocation test_point = enemy_HQ_Location.add(start_direction,hq_attack_range);
+		TerrainTile test_terrain = robot_controller.senseTerrainTile(test_point);
+		try{
+			for(int i=0; i<8; i++){
+				if(((robot_controller.canSenseLocation(test_point) && robot_controller.senseRobotAtLocation(test_point) == null) || robot_controller.canSenseLocation(test_point)) && !test_terrain.equals(TerrainTile.OFF_MAP)){
+					location = test_point;
+					return;
+				}
+				start_direction = start_direction.rotateRight();
+				test_point = enemy_HQ_Location.add(start_direction,hq_attack_range);
+				test_terrain = robot_controller.senseTerrainTile(test_point);
+			}
+				
+		} catch(Exception e){
+			print_exception(e);
+		}
+		//point closest to my HQ. then go clockwise
+			// so long as it's not offmap
+			// so long as it's not in exclusion zone.
+		//location = HQ_location;
+		location = orig_location;
+	}
+	
 	public void evasive_move(){
+		//if(!move_towards_direction(robot_controller.getLocation().directionTo(HQ_location)))
+		//	move(robot_controller.getLocation().directionTo(HQ_location));
 		reset_simple_bug(HQ_location);
 		simpleBug();
 		applyMove();
@@ -121,27 +181,47 @@ public class Mobile extends Arobot {
 		if(sensed_enemy_robots == null)
 			return;
 		for(int i=0; i<sensed_enemy_robots.length;i++){
-			int attack_range = sensed_enemy_robots[i].type.attackRadiusSquared;
-			if(sensed_enemy_robots[i].type.equals(RobotType.LAUNCHER) || sensed_enemy_robots[i].type.equals(RobotType.MISSILE)){
-				attack_range = 36;
-			}
-				
-			for(int j=0; j<danger_levels.length;j++){
-				if(sensed_enemy_robots[i].location.distanceSquaredTo(robot_controller.getLocation().add(directions[j])) <= attack_range ){
-					danger_levels[j] += sensed_enemy_robots[i].type.attackPower;
+			if(!sensed_enemy_robots[i].type.equals(RobotType.TOWER)){
+				int attack_range = sensed_enemy_robots[i].type.attackRadiusSquared;
+				if(sensed_enemy_robots[i].type.equals(RobotType.LAUNCHER)){
+					attack_range = 36;
 				}
-			}
-			if(sensed_enemy_robots[i].location.distanceSquaredTo(robot_controller.getLocation()) <= attack_range ){
-				my_danger_level += sensed_enemy_robots[i].type.attackPower;
-			}					
+				if(sensed_enemy_robots[i].type.equals(RobotType.MISSILE)){
+					attack_range = 36;
+				}				
+				for(int j=0; j<danger_levels.length;j++){
+					if(sensed_enemy_robots[i].location.distanceSquaredTo(robot_controller.getLocation().add(directions[j])) <= attack_range ){
+						danger_levels[j] += sensed_enemy_robots[i].type.attackPower;
+					}
+				}
+				if(sensed_enemy_robots[i].location.distanceSquaredTo(robot_controller.getLocation()) <= attack_range ){
+					my_danger_level += sensed_enemy_robots[i].type.attackPower;
+				}				
+			}		
 		}		
 	}
-
+	public void set_danger_levelzz(Direction direction){
+		MapLocation my_location;
+		
+		danger_levels[direction.ordinal()] = 0;	
+		//add HQ and towers as calculated by HQ
+		my_location = robot_controller.getLocation().add(direction);				
+		danger_levels[direction.ordinal()] = read_broadcast(static_broadcast_offset + location_channel(my_location));
+		
+		for(int i=0; i<sensed_enemy_robots.length;i++){
+			if(!sensed_enemy_robots[i].type.equals(RobotType.TOWER)){
+				if(sensed_enemy_robots[i].location.distanceSquaredTo(robot_controller.getLocation().add(direction)) <= sensed_enemy_robots[i].type.attackRadiusSquared)
+					danger_levels[direction.ordinal()] += sensed_enemy_robots[i].type.attackPower;
+			}		
+		}		
+	}
+	
 	public void go_mining(){
 		if(robot_controller.canMine()){
 			if(robot_controller.isCoreReady()){
 				try{
 					robot_controller.mine();
+					//System.out.println("Mined");
 				}catch(Exception e){
 					 print_exception(e);
 				}
@@ -149,14 +229,17 @@ public class Mobile extends Arobot {
 		}
 	}
 	public void evaluate_mining_position(){
+		//senseOre(mapLocation)
 		if(robot_controller.isCoreReady()){
 			if(my_mining_rate(robot_controller.getLocation()) < mining_move_threshold){
-				for(int i = 1; i < 50; i++)
-					for (final Direction direction: directions)
+				for(int i = 1; i < 50; i++){
+					for (final Direction direction: directions){
 						if(my_mining_rate(robot_controller.getLocation().add(direction,i)) > mining_move_threshold){
 							move_towards_direction(direction);
 								return;
 						}
+					}
+				}
 				mining_move_threshold /=2;
 			}
 		}
@@ -167,6 +250,7 @@ public class Mobile extends Arobot {
 			double current_ore = robot_controller.senseOre(the_location);
 			if(current_ore == 0)
 				return 0;
+			
 			//min(n, max(1, min(mm, n/mr)))
 			return Math.min(current_ore, Math.max(1,Math.min(mining_max,(current_ore/mining_rate))));
 		}

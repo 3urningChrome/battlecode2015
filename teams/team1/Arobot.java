@@ -1,4 +1,4 @@
-package team111;
+package team1;
 
 import battlecode.common.Clock;
 import battlecode.common.Direction;
@@ -76,7 +76,11 @@ public class Arobot {
 		
 		initialise_default_strategy();
 		initialise_spawn_build_list();
-			
+		
+//		if(robot_controller.getID()%2 == 1){
+//			directional_looks = new int[]{0,1,-1,2,-2,3,-3,4};
+//		}
+		
 		int num_of_loops = robot_types_ordinals.length;
 		RobotType[] all_robots = RobotType.values();
 		for(int i=0; i< num_of_loops;i++){
@@ -316,16 +320,19 @@ public class Arobot {
 			
 	}
 	
+
+
 	//Should override this if you actually want the robot to do something other than very basic acts.
 	//also this will not be very efficient. just simple and guaranteed to work for any RobotType.
 	public void basic_turn_loop(){
 		while(true){
-			attack_deadest_enemy_in_range();
+			attack_random_enemy_in_range();
 			update_strategy();
 			robot_controller.yield();
 		}
 	}	
 	
+
 	public boolean attack_deadest_enemy_in_range(){
 		if(my_type.canAttack()){
 			if(robot_controller.isWeaponReady()){
@@ -373,10 +380,26 @@ public class Arobot {
 		}
 		return false;
 	}	
-
+	//basic combat ability to go in basic_turn_loop
+	public void attack_random_enemy_in_range(){
+		if(my_type.canAttack()){
+			if(robot_controller.isWeaponReady()){
+				RobotInfo[] close_enemies = robot_controller.senseNearbyRobots(my_type.attackRadiusSquared, enemy_team);
+				if(close_enemies.length > 0){
+					try{
+						robot_controller.attackLocation(close_enemies[0].location);
+					} catch (Exception e){
+						 print_exception(e);
+					}
+				}
+			}
+		}
+	}
+	
 	public void send_supply(int amount, MapLocation location){
 		if(!(amount > 0))
 			return;
+		
 		try{		
 			robot_controller.transferSupplies(amount, location);
 		} catch (Exception e){
@@ -384,7 +407,8 @@ public class Arobot {
 		}
 	}
 		
-	public void count_the_troops(){		
+	public void count_the_troops(){
+		
 		int num_of_loops = robot_census.length;
 		for (int i=0; i<num_of_loops;i++){
 			try{

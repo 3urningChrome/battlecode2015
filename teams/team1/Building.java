@@ -1,4 +1,4 @@
-package team111;
+package team1;
 
 import battlecode.common.Clock;
 import battlecode.common.Direction;
@@ -20,12 +20,14 @@ public class Building extends Arobot {
 		robot_controller.yield();
 		while(true){
 			sensed_enemy_robots = robot_controller.senseNearbyRobots((int)(GameConstants.HQ_BUFFED_ATTACK_RADIUS_SQUARED * 1.2),enemy_team);			
+			//attack_random_enemy_in_range();
 			attack_deadest_enemy_in_range();
 			if(Clock.getRoundNum()%5 == 0){			
 				count_the_troops();
 				update_strategy();	
 				check_for_spawns();	
 			}	
+		//	if(all_out_attack)
 				dish_out_supply();
 			robot_controller.yield();
 		}		
