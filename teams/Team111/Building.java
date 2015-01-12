@@ -21,11 +21,12 @@ public class Building extends Arobot {
 		while(true){
 			sensed_enemy_robots = robot_controller.senseNearbyRobots((int)(GameConstants.HQ_BUFFED_ATTACK_RADIUS_SQUARED * 1.2),enemy_team);			
 			attack_deadest_enemy_in_range();
-			if(Clock.getRoundNum()%5 == 0){			
+//			if(Clock.getRoundNum()%5 == 0){			
 				count_the_troops();
 				update_strategy();	
 				check_for_spawns();	
-			}	
+//			}	
+				request_help();
 				dish_out_supply();
 			robot_controller.yield();
 		}		
@@ -52,6 +53,8 @@ public class Building extends Arobot {
 					if(robot_controller.canSpawn(direction, required_type))
 						try{
 							robot_controller.spawn(direction,required_type);
+							send_broadcast(cumulative_ore_spent, read_broadcast(cumulative_ore_spent) + required_type.oreCost);
+		//					send_broadcast(troop_count_channel+required_type.ordinal(), read_broadcast(troop_count_channel+required_type.ordinal()) + 1);
 							return true;
 						} catch(Exception e){
 							print_exception(e);
