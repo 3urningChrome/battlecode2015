@@ -1,4 +1,4 @@
-package team111;
+package team2;
 
 import battlecode.common.Clock;
 import battlecode.common.Direction;
@@ -218,7 +218,7 @@ public class Arobot {
 		robot_max[RobotType.HELIPAD.ordinal()] = 1;
 		robot_max[RobotType.DRONE.ordinal()] = 1;
 		robot_max[RobotType.MINER.ordinal()] = 4;
-		robot_max[RobotType.LAUNCHER.ordinal()] = 500;
+		robot_max[RobotType.LAUNCHER.ordinal()] = 50;
 		
 		if(robot_census[RobotType.DRONE.ordinal()] > 0 && robot_census[RobotType.DRONE.ordinal()] >= robot_max[RobotType.DRONE.ordinal()])
 			robot_max[RobotType.MINERFACTORY.ordinal()] = 1;
@@ -229,37 +229,25 @@ public class Arobot {
 		if(robot_census[RobotType.MINERFACTORY.ordinal()] > 0){
 			robot_max[RobotType.AEROSPACELAB.ordinal()] = 1;
 			robot_max[RobotType.DRONE.ordinal()] = 999;
-			robot_max[RobotType.MINER.ordinal()] = 20;
 		}
 		
 		
 		if(robot_controller.getTeamOre() > 600){
-			robot_max[RobotType.MINER.ordinal()] = robot_census[RobotType.MINER.ordinal()] +=1;
+			robot_max[RobotType.MINER.ordinal()] +=1;
 		}
 		
 		if(robot_controller.getTeamOre() > 825){
-			robot_max[RobotType.HELIPAD.ordinal()] = 2;
+			robot_max[RobotType.HELIPAD.ordinal()] += 1;
 		}
 		
-		if(robot_controller.getTeamOre() > 925){
-			robot_max[RobotType.BEAVER.ordinal()] =  2;
-		}
-
+//		if(robot_controller.getTeamOre() > 925){
+//			robot_max[RobotType.BEAVER.ordinal()] += 1;
+//		}
+		
 		if(robot_controller.getTeamOre() > 1025){
-			robot_max[RobotType.AEROSPACELAB.ordinal()] = 2;
-			robot_max[RobotType.HELIPAD.ordinal()] = 3;
+			robot_max[RobotType.MINERFACTORY.ordinal()] += 1;
 		}
 		
-		if(robot_controller.getTeamOre() > 2000){
-			robot_max[RobotType.AEROSPACELAB.ordinal()] = 3;
-			robot_max[RobotType.HELIPAD.ordinal()] = 5;
-		}
-		
-		if(Clock.getRoundNum()> (TEMPORAL_HASH - 110)){
-			robot_max[RobotType.HANDWASHSTATION.ordinal()] = 100;
-			robot_max[RobotType.DRONE.ordinal()] = 0;
-			robot_max[RobotType.LAUNCHER.ordinal()] = 0;
-		} 
 		
 	}
 	
@@ -313,9 +301,9 @@ public class Arobot {
 	public void request_help(){		
 		if(robot_controller.getHealth() < previous_health ){
 				previous_health-=2;
-//System.out.println("Wanting help");
+System.out.println("Wanting help");
 				if(read_broadcast(orders_broadcast_offset + location_channel(HQ_location)) == 0){
-	//				System.out.println("Requesting help");
+					System.out.println("Requesting help");
 					send_broadcast(orders_broadcast_offset + location_channel(HQ_location),robot_controller.getID());
 				}
 		}
@@ -369,7 +357,7 @@ public class Arobot {
 			return 36;
 		}
 		if(query_type.equals(RobotType.MISSILE)){
-			return 9;
+			return 36;
 		}	
 		if(query_type.equals(RobotType.BASHER)){
 			return 8;
