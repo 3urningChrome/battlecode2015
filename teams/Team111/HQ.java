@@ -1,6 +1,6 @@
 package team111;
 
-import battlecode.common.Clock;
+import battlecode.common.Direction;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
@@ -8,122 +8,217 @@ import battlecode.common.RobotType;
 
 public class HQ extends Building  {
 	
-	static int recalc_danger_rate = 100;
-	static int danger_alternator = 0;
+	//Drone roles:
+	static final int DRONE_HARASS1 = 0;
+	static final int DRONE_HARASS2 = 1;
+	static final int DRONE_HARASS3 = 2;
+	static final int DRONE_HARASS4 = 3;
+	static final int DRONE_SWARM1 = 4;
+	static final int DRONE_SWARM2 = 5;
+	static final int DRONE_SWARM3 = 6;
+	
+	//Launcher Roles:
+	static final int LAUNCHER_DEFEND = 0;
+	static final int LAUNCHER_HARASS = 1;
+
 	
 	public HQ(RobotController rc) {
-		super(rc);
-		my_max_supply_level = 0;
-		my_min_supply_level = 0;
-		my_optimal_supply_level = 0;
-		
-		basic_turn_loop();
+		super(rc);	
 	}
 	
 	public void basic_turn_loop(){
+		update_strategy();				
+		check_for_spawns();	
+		
+		initialise_max_job_roles();
+		initialise_job_role_aggression();
+		initialise_job_role_locations();
+		
+		robot_controller.yield();
 		
 		while(true){
 			attack_deadest_enemy_in_range();
-			
-			count_the_troops();
-						
-			update_strategy();	
-						
+			perform_a_troop_census();			
+			update_strategy();				
 			check_for_spawns();	
-			
-			broadcast_swarm_location();
-			
 			refresh_job_roles();
-												
-			dish_out_supply();
-						
+			broadcast_role_locations();									
+			dish_out_supply();			
 			robot_controller.yield();
 		}		
 	}
 	
-	public void refresh_job_roles(){
-		send_broadcast(drone_harass_current, 0);
-		send_broadcast(drone_swarm_current, 0);
-		send_broadcast(launcher_harass_current, 0);
-		send_broadcast(launcher_tower_protection_current, 0);		
+	private void initialise_max_job_roles() {
+		//drones
+		send_broadcast(role_max_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS1, 1);
+		send_broadcast(role_max_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS2, 1);
+		send_broadcast(role_max_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS3, 1);
+		send_broadcast(role_max_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS4, 1);
+		
+		send_broadcast(role_max_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_SWARM1, 3);
+		send_broadcast(role_max_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_SWARM2, 3);
+		send_broadcast(role_max_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_SWARM3, 999);
+		
+		//launchers
+		send_broadcast(role_max_offset + role_channel_start[RobotType.LAUNCHER.ordinal()] + LAUNCHER_HARASS, 999);
+		send_broadcast(role_max_offset + role_channel_start[RobotType.LAUNCHER.ordinal()] + LAUNCHER_DEFEND, 3);	
+	}
+	private void initialise_job_role_aggression(){
+		//set aggression (if aggressive)
+		//drones
+		send_broadcast(aggressive_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS1, 1);
+		send_broadcast(aggressive_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS2, 1);
+		send_broadcast(aggressive_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS3, 1);
+		send_broadcast(aggressive_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS4, 1);
+		send_broadcast(aggressive_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_SWARM1, 1);
+		send_broadcast(aggressive_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_SWARM2, 1);
+		send_broadcast(aggressive_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_SWARM3, 1);
+		
+	}
+	public void initialise_job_role_locations(){
+		//set default Locations
+		MapLocation location = enemy_HQ_Location;
+		
+		//drones
+		int distance = (int)(Math.sqrt(get_attack_radius(RobotType.HQ)) + 1);
+		location = enemy_HQ_Location.add(Direction.NORTH,distance);
+		send_broadcast(role_x_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS1, location.x);
+		send_broadcast(role_y_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS1, location.y);
+		
+		location = enemy_HQ_Location.add(Direction.SOUTH,distance);
+		send_broadcast(role_x_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS2, location.x);
+		send_broadcast(role_y_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS2, location.y);
+		
+		location = enemy_HQ_Location.add(Direction.EAST,distance);
+		send_broadcast(role_x_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS3, location.x);
+		send_broadcast(role_y_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS3, location.y);
+		
+		location = enemy_HQ_Location.add(Direction.WEST,distance);
+		send_broadcast(role_x_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS4, location.x);
+		send_broadcast(role_y_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS4, location.y);
+		
+		location = centre_point; //center
+		send_broadcast(role_x_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_SWARM1, location.x);
+		send_broadcast(role_y_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_SWARM1, location.y);
+			
+		int y_diff = (centre_point.x - enemy_HQ_Location.x)/2;
+		int x_diff = (centre_point.y - enemy_HQ_Location.y)/2;
+		location = location.add(1-x_diff,y_diff);  //off centre
+		send_broadcast(role_x_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_SWARM2, location.x);
+		send_broadcast(role_y_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_SWARM2, location.y);
+		
+		location = location.add(x_diff,1-y_diff); // off centre
+		send_broadcast(role_x_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_SWARM3, location.x);
+		send_broadcast(role_y_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_SWARM3, location.y);
+		
+		//launchers
+		MapLocation[] the_towers = robot_controller.senseEnemyTowerLocations();
+		if(the_towers.length == 0)
+			the_towers = new MapLocation[]{enemy_HQ_Location};
+		location = Utilities.find_closest(HQ_location,the_towers);		
+		send_broadcast(role_x_offset + role_channel_start[RobotType.LAUNCHER.ordinal()] + LAUNCHER_HARASS,location.x);
+		send_broadcast(role_y_offset + role_channel_start[RobotType.LAUNCHER.ordinal()] + LAUNCHER_HARASS, location.y);
+		
+		location = Utilities.find_closest(enemy_HQ_Location, robot_controller.senseTowerLocations());
+		location = location.add(location.directionTo(enemy_HQ_Location),2);
+		send_broadcast(role_x_offset + role_channel_start[RobotType.LAUNCHER.ordinal()] + LAUNCHER_DEFEND, location.x);
+		send_broadcast(role_y_offset + role_channel_start[RobotType.LAUNCHER.ordinal()] + LAUNCHER_DEFEND, location.y);
 	}
 	
-	public void broadcast_swarm_location(){
-//		send_broadcast(swarm_location_channel_x,HQ_location.x);
-//		send_broadcast(swarm_location_channel_y,HQ_location.y);	
-//		return;
-
-		MapLocation swarm_location = centre_point;
-		int total_fighting_robots = 0;
-		total_fighting_robots += robot_census[RobotType.BASHER.ordinal()];
-		total_fighting_robots += robot_census[RobotType.COMMANDER.ordinal()];
-		total_fighting_robots += robot_census[RobotType.DRONE.ordinal()];
-	//	total_fighting_robots += robot_census[RobotType.LAUNCHER.ordinal()];
-		total_fighting_robots += robot_census[RobotType.SOLDIER.ordinal()];
-		total_fighting_robots += robot_census[RobotType.TANK.ordinal()];
+	public void refresh_job_roles(){
+		send_broadcast(role_current_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS1, 0);
+		send_broadcast(role_current_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS2, 0);
+		send_broadcast(role_current_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS3, 0);
+		send_broadcast(role_current_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS4, 0);
+		send_broadcast(role_current_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_SWARM1, 0);
+		send_broadcast(role_current_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_SWARM2, 0);
+		send_broadcast(role_current_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_SWARM3, 0);
+		send_broadcast(role_current_offset + role_channel_start[RobotType.LAUNCHER.ordinal()] + LAUNCHER_HARASS, 0);
+		send_broadcast(role_current_offset + role_channel_start[RobotType.LAUNCHER.ordinal()] + LAUNCHER_DEFEND, 0);	
+	}
+	
+	public void remove_roles(){
+		// this will be called to swarm.
+		//only ignore people here if they are not to swarm
+		//drones
+		send_broadcast(role_max_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS1, 0);
+		send_broadcast(role_max_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS2, 0);
+		send_broadcast(role_max_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS3, 0);
+		send_broadcast(role_max_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS4, 0);
 		
+		send_broadcast(role_max_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_SWARM1, 0);
+		send_broadcast(role_max_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_SWARM2, 0);
+		send_broadcast(role_max_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_SWARM3, 0);
+	}
+
+	private void broadcast_role_locations() {
+		//send out role locations if they change.
+		MapLocation location;
+		//Drones: all static locations at the moment
+		
+		//launchers
 		MapLocation[] the_towers = robot_controller.senseEnemyTowerLocations();
+		if(the_towers.length == 0)
+			the_towers = new MapLocation[]{enemy_HQ_Location};
+		location = Utilities.find_closest(HQ_location,the_towers);		
+		send_broadcast(role_x_offset + role_channel_start[RobotType.LAUNCHER.ordinal()] + LAUNCHER_HARASS,location.x);
+		send_broadcast(role_y_offset + role_channel_start[RobotType.LAUNCHER.ordinal()] + LAUNCHER_HARASS, location.y);
+		
+		location = Utilities.find_closest(enemy_HQ_Location, robot_controller.senseTowerLocations());
+		location = location.add(location.directionTo(enemy_HQ_Location),2);
+		send_broadcast(role_x_offset + role_channel_start[RobotType.LAUNCHER.ordinal()] + LAUNCHER_DEFEND, location.x);
+		send_broadcast(role_y_offset + role_channel_start[RobotType.LAUNCHER.ordinal()] + LAUNCHER_DEFEND, location.y);			
+		
+		//set "swarm _location" where any non-role bots go.
+		location = set_swarm_point(the_towers);
+		send_broadcast(swarm_location_channel_x,location.x);
+		send_broadcast(swarm_location_channel_y,location.y);
+	}
+	
+	public MapLocation set_swarm_point(MapLocation [] the_towers){
+
+		MapLocation location = centre_point;
+		int total_fighting_robots = robot_census[RobotType.BASHER.ordinal()] + robot_census[RobotType.COMMANDER.ordinal()] + robot_census[RobotType.DRONE.ordinal()] + robot_census[RobotType.SOLDIER.ordinal()] + robot_census[RobotType.TANK.ordinal()];
+		//	total_fighting_robots += robot_census[RobotType.LAUNCHER.ordinal()];
+		
+		//cry for help, only respond if not swarming
+		int my_orders = read_broadcast(orders_broadcast_offset + location_channel(HQ_location));
+		if (my_orders !=0 && swarm_trigger == 0){		
+			try{
+				send_broadcast(orders_broadcast_offset + location_channel(HQ_location),0);
+				if(robot_controller.canSenseRobot(my_orders)){
+					remove_roles();
+					return robot_controller.senseRobot(my_orders).location;
+				}
+			} catch(Exception e){
+				Utilities.print_exception(e);
+			}
+		}
+				
 		int num_of_towers = the_towers.length;
 		int swarm_attack = Math.max((num_of_towers * 6),20);
 		int swarm_retreat = num_of_towers * 4;
 		
-		if(total_fighting_robots > swarm_attack){
-			//Nearest My Tower to enemy HQ until swarm point
-			//the_towers = robot_controller.senseTowerLocations();
-			MapLocation the_starting_point = enemy_HQ_Location;	
-			if(num_of_towers == 0)
-				the_towers = new MapLocation[]{enemy_HQ_Location};
-			
-			swarm_location = find_closest(the_starting_point,the_towers);
-			send_broadcast(drone_harass_max, 0);
-			send_broadcast(drone_swarm_max, 0);
-			send_broadcast(launcher_harass_max, 999);
-			swarm_trigger = swarm_attack;
-			
-		} else{
-			int my_orders = read_broadcast(orders_broadcast_offset + location_channel(HQ_location));
-			if (my_orders !=0 && swarm_trigger == 0){		
-				try{
-					send_broadcast(orders_broadcast_offset + location_channel(HQ_location),0);
-					if(robot_controller.canSenseRobot(my_orders)){
-						swarm_location = robot_controller.senseRobot(my_orders).location;
-						send_broadcast(drone_swarm_max, 0);
-	//					System.out.println("Sending swarm to " + swarm_location.toString());
-					}
-				} catch(Exception e){
-					print_exception(e);
-				}
-			} else if(total_fighting_robots < swarm_retreat){
-				swarm_trigger = 0;
-				send_broadcast(drone_harass_max, 4);
-				send_broadcast(drone_swarm_max, 9999);
-				send_broadcast(launcher_harass_max, 999);
-				send_broadcast(launcher_tower_protection_max, 3);
-			} else if(swarm_trigger > 0){
-				//Nearest My Tower to enemy HQ until swarm point
-				//the_towers = robot_controller.senseTowerLocations();
-				MapLocation the_starting_point = enemy_HQ_Location;	
-				if(num_of_towers == 0)
-					the_towers = new MapLocation[]{enemy_HQ_Location};
-				
-				swarm_location = find_closest(the_starting_point,the_towers);
-				send_broadcast(drone_harass_max, 0);
-				send_broadcast(drone_swarm_max, 0);
-				send_broadcast(launcher_harass_max, 999);
-				swarm_trigger = swarm_attack;
-								
-			} else{
-				send_broadcast(drone_harass_max, 4);
-				send_broadcast(drone_swarm_max, 9999);
-				send_broadcast(launcher_harass_max, 999);
-				send_broadcast(launcher_tower_protection_max, 3);
-			}
+		//not many bots. lets stop swarming if we are.
+		if(total_fighting_robots < swarm_retreat && swarm_trigger != 0){
+			swarm_trigger = 0;
+			location = centre_point;
+			initialise_max_job_roles();
+			return location;
 		}
-		send_broadcast(swarm_location_channel_x,swarm_location.x);
-		send_broadcast(swarm_location_channel_y,swarm_location.y);
+
+		//lots of bots, lets kill (or carry on killing) stuff!
+		if(total_fighting_robots > swarm_attack || swarm_trigger != 0 ){
+			location = Utilities.find_closest(HQ_location,the_towers);
+			swarm_trigger = swarm_attack;
+			remove_roles();
+			return location;
+		}
+		
+		return location;
 	}
 	
-	public void count_the_troops(){
+	public void perform_a_troop_census(){
 		robot_census = new int[]{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 		RobotInfo[] sensed_friendly_Robots = robot_controller.senseNearbyRobots(999999, my_team);
 		

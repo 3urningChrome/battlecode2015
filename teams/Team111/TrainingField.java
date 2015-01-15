@@ -6,7 +6,6 @@ public class TrainingField extends Building  {
 
 	public TrainingField(RobotController rc) {
 		super(rc);
-		basic_turn_loop();
 	}
 
 }

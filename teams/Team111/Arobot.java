@@ -12,6 +12,7 @@ import battlecode.common.GameConstants;
 public class Arobot {
 
 	static RobotController robot_controller;
+//	static Utilities utils;
 	
 	static Team my_team;
 	static Team enemy_team;
@@ -23,12 +24,13 @@ public class Arobot {
 	static final int HASH = Math.max(GameConstants.MAP_MAX_WIDTH,GameConstants.MAP_MAX_HEIGHT);
 	static final int TEMPORAL_HASH = GameConstants.ROUND_MAX_LIMIT;	
 	static final int BEYOND_MAX_ATTACK_RANGE = 64;
+	static MapLocation[] last_processed_enemy_towers;
 	
 	//arrays
 	static int[] robot_census = new int[]{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	static int[] robot_max = new int[]{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	static boolean[] robot_mobile = new boolean[]{false,false,false,false,false,false,false,false,false,false,false,true,true,true,true,true,true,true,true,true,false};
-	static int[] spawn_build_ordinals;
+	static int[] possible_spawn_and_building_ordinals;
 	static int[] robot_types_ordinals = new int[RobotType.values().length];
 	static RobotType[] robot_types = RobotType.values();
 	static RobotInfo[] sensed_enemy_robots;
@@ -43,20 +45,22 @@ public class Arobot {
 	static int defence_location_channel_y = 4;	
 	static int override_saftey = 5;
 	static int cumulative_ore_spent = 6;
-	static int drone_harass_max = 7;
-	static int drone_harass_current = 8;
-	static int drone_swarm_max = 9;
-	static int drone_swarm_current = 10;
-	static int launcher_harass_max = 11;
-	static int launcher_harass_current = 12;
-	static int launcher_tower_protection_max = 13;
-	static int launcher_tower_protection_current = 14;
-	static int troop_count_channel = 100; // (+ 21)
-	static int orders_broadcast_offset = 200 + (HASH * HASH);
+	static int troop_count_channel = 1000; // (+ 21)
+	static int orders_broadcast_offset = 1050 + (HASH * HASH);
+	
+	static final int MAX_ROLES = 10;
+	static int[] role_channel_start = new int[]{0,MAX_ROLES,2*MAX_ROLES,3*MAX_ROLES,4*MAX_ROLES,5*MAX_ROLES,6*MAX_ROLES,7*MAX_ROLES,8*MAX_ROLES,9*MAX_ROLES,10*MAX_ROLES,11*MAX_ROLES,12*MAX_ROLES,13*MAX_ROLES,14*MAX_ROLES,15*MAX_ROLES,16*MAX_ROLES,17*MAX_ROLES,18*MAX_ROLES,19*MAX_ROLES,20*MAX_ROLES};
+	static int role_current_offset = 10;
+	static int role_max_offset = 220;
+	static int role_x_offset = 430;
+	static int role_y_offset = 640;
+	static int aggressive_offset = 850;
 
 	//strategy
 	static int swarm_trigger = 0; // set in HQ
 	static boolean all_out_attack =false;
+	static int my_role = -1;
+	static int aggressive = 0;
 	
 	//supply values
 	static double min_building_supply_level = 5;
@@ -88,6 +92,8 @@ public class Arobot {
 		HQ_location = robot_controller.senseHQLocation();
 		enemy_HQ_Location = robot_controller.senseEnemyHQLocation();
 		
+		last_processed_enemy_towers = robot_controller.senseEnemyTowerLocations();
+		
 		initialise_default_strategy();
 		initialise_spawn_build_list();
 			
@@ -101,91 +107,100 @@ public class Arobot {
 		centre_point = new MapLocation(((HQ_location.x - enemy_HQ_Location.x)/2) + enemy_HQ_Location.x,((HQ_location.y - enemy_HQ_Location.y)/2) + enemy_HQ_Location.y);
 		previous_health = robot_controller.getHealth();
 		
+		basic_turn_loop();
+	}
+	
+	//Should override this if you actually want the robot to do something other than exist
+	public void basic_turn_loop(){
+		while(true){
+			System.out.println("You need to overide this method");
+			robot_controller.yield();
+		}
 	}
 	
 	private void initialise_spawn_build_list() {
-		spawn_build_ordinals = new int[1];
+		possible_spawn_and_building_ordinals = new int[1];
 		switch(my_type){
 		case AEROSPACELAB:
-			spawn_build_ordinals[0] = RobotType.LAUNCHER.ordinal();
+			possible_spawn_and_building_ordinals[0] = RobotType.LAUNCHER.ordinal();
 			break;
 		case BARRACKS:
-			spawn_build_ordinals = new int[2];
-			spawn_build_ordinals[0] = RobotType.BASHER.ordinal();
-			spawn_build_ordinals[1] = RobotType.SOLDIER.ordinal();
+			possible_spawn_and_building_ordinals = new int[2];
+			possible_spawn_and_building_ordinals[0] = RobotType.BASHER.ordinal();
+			possible_spawn_and_building_ordinals[1] = RobotType.SOLDIER.ordinal();
 			break;
 		case BASHER:
-			spawn_build_ordinals = null;
+			possible_spawn_and_building_ordinals = null;
 			break;
 		case BEAVER:
-			spawn_build_ordinals = new int[9];
-			spawn_build_ordinals[0] = RobotType.AEROSPACELAB.ordinal();
-			spawn_build_ordinals[1] = RobotType.BARRACKS.ordinal();
-			spawn_build_ordinals[2] = RobotType.HANDWASHSTATION.ordinal();
-			spawn_build_ordinals[3] = RobotType.HELIPAD.ordinal();
-			spawn_build_ordinals[4] = RobotType.MINERFACTORY.ordinal();
-			spawn_build_ordinals[5] = RobotType.SUPPLYDEPOT.ordinal();
-			spawn_build_ordinals[6] = RobotType.TANKFACTORY.ordinal();
-			spawn_build_ordinals[7] = RobotType.TECHNOLOGYINSTITUTE.ordinal();
-			spawn_build_ordinals[8] = RobotType.TRAININGFIELD.ordinal();
+			possible_spawn_and_building_ordinals = new int[9];
+			possible_spawn_and_building_ordinals[0] = RobotType.AEROSPACELAB.ordinal();
+			possible_spawn_and_building_ordinals[1] = RobotType.BARRACKS.ordinal();
+			possible_spawn_and_building_ordinals[2] = RobotType.HANDWASHSTATION.ordinal();
+			possible_spawn_and_building_ordinals[3] = RobotType.HELIPAD.ordinal();
+			possible_spawn_and_building_ordinals[4] = RobotType.MINERFACTORY.ordinal();
+			possible_spawn_and_building_ordinals[5] = RobotType.SUPPLYDEPOT.ordinal();
+			possible_spawn_and_building_ordinals[6] = RobotType.TANKFACTORY.ordinal();
+			possible_spawn_and_building_ordinals[7] = RobotType.TECHNOLOGYINSTITUTE.ordinal();
+			possible_spawn_and_building_ordinals[8] = RobotType.TRAININGFIELD.ordinal();
 			break;
 		case COMMANDER:
-			spawn_build_ordinals = null;
+			possible_spawn_and_building_ordinals = null;
 			break;
 		case COMPUTER:
-			spawn_build_ordinals = null;
+			possible_spawn_and_building_ordinals = null;
 			break;
 		case DRONE:
-			spawn_build_ordinals = null;
+			possible_spawn_and_building_ordinals = null;
 			break;
 		case HANDWASHSTATION:
-			spawn_build_ordinals = null;
+			possible_spawn_and_building_ordinals = null;
 			break;
 		case HELIPAD:
-			spawn_build_ordinals[0] = RobotType.DRONE.ordinal();
+			possible_spawn_and_building_ordinals[0] = RobotType.DRONE.ordinal();
 			break;
 		case HQ:
-			spawn_build_ordinals[0] = RobotType.BEAVER.ordinal();
+			possible_spawn_and_building_ordinals[0] = RobotType.BEAVER.ordinal();
 			break;
 		case LAUNCHER:
-			spawn_build_ordinals[0] = RobotType.MISSILE.ordinal();
+			possible_spawn_and_building_ordinals[0] = RobotType.MISSILE.ordinal();
 			break;
 		case MINER:
-			spawn_build_ordinals = null;
+			possible_spawn_and_building_ordinals = null;
 			break;
 		case MINERFACTORY:
-			spawn_build_ordinals[0] = RobotType.MINER.ordinal();
+			possible_spawn_and_building_ordinals[0] = RobotType.MINER.ordinal();
 			break;
 		case MISSILE:
-			spawn_build_ordinals = null;
+			possible_spawn_and_building_ordinals = null;
 			break;
 		case SOLDIER:
-			spawn_build_ordinals = null;
+			possible_spawn_and_building_ordinals = null;
 			break;
 		case SUPPLYDEPOT:
-			spawn_build_ordinals = null;
+			possible_spawn_and_building_ordinals = null;
 			break;
 		case TANK:
-			spawn_build_ordinals = null;
+			possible_spawn_and_building_ordinals = null;
 			break;
 		case TANKFACTORY:
-			spawn_build_ordinals[0] = RobotType.TANK.ordinal();
+			possible_spawn_and_building_ordinals[0] = RobotType.TANK.ordinal();
 			break;
 		case TECHNOLOGYINSTITUTE:
-			spawn_build_ordinals[0] = RobotType.COMPUTER.ordinal();
+			possible_spawn_and_building_ordinals[0] = RobotType.COMPUTER.ordinal();
 			break;
 		case TOWER:
-			spawn_build_ordinals = null;
+			possible_spawn_and_building_ordinals = null;
 			break;
 		case TRAININGFIELD:
-			spawn_build_ordinals[0] = RobotType.COMMANDER.ordinal();
+			possible_spawn_and_building_ordinals[0] = RobotType.COMMANDER.ordinal();
 			break;
 		default:
 			break;
 		}
 	}
 
-	private void initialise_default_strategy() {
+	private void initialise_default_strategy() {		
 		robot_max[RobotType.AEROSPACELAB.ordinal()] = 0;
 		robot_max[RobotType.BARRACKS.ordinal()] = 0;
 		robot_max[RobotType.BASHER.ordinal()] = 0;
@@ -197,7 +212,7 @@ public class Arobot {
 		robot_max[RobotType.HELIPAD.ordinal()] = 0;
 		robot_max[RobotType.HQ.ordinal()] = 0;
 		robot_max[RobotType.LAUNCHER.ordinal()] = 0;
-		robot_max[RobotType.MINER.ordinal()] = 4;
+		robot_max[RobotType.MINER.ordinal()] = 0;
 		robot_max[RobotType.MINERFACTORY.ordinal()] = 0;
 		robot_max[RobotType.MISSILE.ordinal()] = 0;
 		robot_max[RobotType.SOLDIER.ordinal()] = 0;
@@ -310,7 +325,7 @@ public class Arobot {
 //		System.out.println("Max Array:"  + robot_max.toString());
 	}
 	
-	public void request_help(){		
+	public void send_out_SOS_if_help_is_needed(){		
 		if(robot_controller.getHealth() < previous_health ){
 				previous_health-=2;
 //System.out.println("Wanting help");
@@ -319,26 +334,9 @@ public class Arobot {
 					send_broadcast(orders_broadcast_offset + location_channel(HQ_location),robot_controller.getID());
 				}
 		}
-	}
-	//Should override this if you actually want the robot to do something other than very basic acts.
-	//also this will not be very efficient. just simple and guaranteed to work for any RobotType.
-	public void basic_turn_loop(){
-		while(true){
-			attack_deadest_enemy_in_range();
-			update_strategy();
-			robot_controller.yield();
-		}
 	}	
 	
-	public int increase_attack_radius(int attack_radius, int i) {
-		// TODO Auto-generated method stub
-		if (i==0)
-			return attack_radius;
-		
-		double root = Math.sqrt(attack_radius);
-		root = (int)(root+ 1);
-		return (int)Math.pow((root + i),2);
-	}
+
 	
 	public int get_my_attack_radius(){
 		return get_attack_radius(my_type);
@@ -346,10 +344,12 @@ public class Arobot {
 	
 	public int get_attack_radius(RobotType query_type){
 		int attack_radius = query_type.attackRadiusSquared;
-		if(query_type.equals(RobotType.HQ)){
-			MapLocation[] my_towers = robot_controller.senseTowerLocations();
+		switch(query_type){
+		case BASHER:
+			return 8;
+		case HQ:
 			boolean hq_splash = false;
-			switch(my_towers.length){
+			switch(last_processed_enemy_towers.length){
 			case 6:
 			case 5:
 				hq_splash = true;	
@@ -361,20 +361,18 @@ public class Arobot {
 				break;		
 			}
 			if(hq_splash){
-				attack_radius = increase_attack_radius(attack_radius, 1);
+				attack_radius = Utilities.increase_attack_radius(attack_radius, 1);
 			}
 			return attack_radius;
-		}
-		if(query_type.equals(RobotType.LAUNCHER)){
+		case LAUNCHER:
 			return 36;
-		}
-		if(query_type.equals(RobotType.MISSILE)){
+		case MISSILE:
 			return 9;
-		}	
-		if(query_type.equals(RobotType.BASHER)){
-			return 8;
-		}	
-		return query_type.attackRadiusSquared;
+		default:
+			return query_type.attackRadiusSquared;
+		}
+
+
 	}
 	
 	public boolean attack_deadest_enemy_in_range(){
@@ -402,7 +400,7 @@ public class Arobot {
 						}
 						return true;
 					} catch (Exception e){
-						 print_exception(e);
+						Utilities.print_exception(e);
 					}
 				}
 			}
@@ -415,41 +413,23 @@ public class Arobot {
 		try{		
 			robot_controller.transferSupplies(amount, location);
 		} catch (Exception e){
-			print_exception(e);
+			Utilities.print_exception(e);
 		}
 	}
 		
-	public void count_the_troops(){		
+	public void perform_a_troop_census(){		
 		int num_of_loops = robot_census.length;
 		for (int i=0; i<num_of_loops;i++){
 			try{
 				robot_census[i] = read_broadcast(troop_count_channel + i);
 			} catch (Exception e){
-				print_exception(e);
+				Utilities.print_exception(e);
 			}			
 		}
 
 	}		
 	
-	public MapLocation find_closest(MapLocation starting_point, MapLocation[] possible_locations){
-		int closest_distance = 99999;
-		int pos_of_closest = 0;
-		
-		if(possible_locations == null)
-			return starting_point;
-		
-		if(possible_locations.length < 1){
-			return starting_point;
-		}
-		
-		for(int i=0; i< possible_locations.length;i++){
-			if(starting_point.distanceSquaredTo(possible_locations[i]) < closest_distance){
-				closest_distance = starting_point.distanceSquaredTo(possible_locations[i]);
-				pos_of_closest = i;
-			}
-		}
-		return possible_locations[pos_of_closest];
-	}
+
 		
 	public int location_channel(MapLocation encode_this_location){
 		
@@ -458,47 +438,47 @@ public class Arobot {
 		return (return_location.x * HASH) + return_location.y;
 	}
 	
-	public int encode_location(MapLocation encode_this_location){	
-		System.out.println("Location to encode:" + encode_this_location.toString());
-		System.out.println("Encoded Location (x) " + (HQ_location.x - encode_this_location.x) * HASH);
-		System.out.println("Encoded Location (y) " + (HQ_location.y - encode_this_location.y));
-		return ((encode_this_location.x - HQ_location.x) * HASH) + ((encode_this_location.y - HQ_location.y));
-	}
+//	public int encode_location(MapLocation encode_this_location){	
+//		System.out.println("Location to encode:" + encode_this_location.toString());
+//		System.out.println("Encoded Location (x) " + (HQ_location.x - encode_this_location.x) * HASH);
+//		System.out.println("Encoded Location (y) " + (HQ_location.y - encode_this_location.y));
+//		return ((encode_this_location.x - HQ_location.x) * HASH) + ((encode_this_location.y - HQ_location.y));
+//	}
 	
-	public MapLocation decode_location(int encoded_location){
-		System.out.println("Location to decode:" + encoded_location);
+//	public MapLocation decode_location(int encoded_location){
+//		System.out.println("Location to decode:" + encoded_location);
 
-		int encoded_location_y = (encoded_location % HASH) + HQ_location.y;
-		int encoded_location_x = ((encoded_location - encoded_location_y) / HASH) + HQ_location.x;
+//		int encoded_location_y = (encoded_location % HASH) + HQ_location.y;
+//		int encoded_location_x = ((encoded_location - encoded_location_y) / HASH) + HQ_location.x;
 
-		System.out.println("decoded Location (x) " + (((encoded_location - encoded_location_y) / HASH) ));
-		System.out.println("decoded Location (y) " + ((encoded_location % HASH) ));
-		return new MapLocation(encoded_location_x,encoded_location_y);
-	}
+//		System.out.println("decoded Location (x) " + (((encoded_location - encoded_location_y) / HASH) ));
+//		System.out.println("decoded Location (y) " + ((encoded_location % HASH) ));
+//		return new MapLocation(encoded_location_x,encoded_location_y);
+//	}
 	
-	public int encode_exclusion_data(int damage, int end_round_num){
-		if(end_round_num > TEMPORAL_HASH)
-			end_round_num = TEMPORAL_HASH;
+//	public int encode_exclusion_data(int damage, int end_round_num){
+//		if(end_round_num > TEMPORAL_HASH)
+//			end_round_num = TEMPORAL_HASH;
 		
-		return (end_round_num * TEMPORAL_HASH) + damage;
-	}
+//		return (end_round_num * TEMPORAL_HASH) + damage;
+//	}
 	
-	public int decode_exclusion_damage(int encoded_data){
-		if(Clock.getRoundNum()> decode_exclusion_end_round(encoded_data))
-			return 0;
-		return encoded_data % TEMPORAL_HASH;
-	}
+//	public int decode_exclusion_damage(int encoded_data){
+//		if(Clock.getRoundNum()> decode_exclusion_end_round(encoded_data))
+//			return 0;
+//		return encoded_data % TEMPORAL_HASH;
+//	}
 	
-	public int decode_exclusion_end_round(int encoded_data){
-		return (encoded_data - (encoded_data % TEMPORAL_HASH)) / TEMPORAL_HASH;
-	}
+//	public int decode_exclusion_end_round(int encoded_data){
+//		return (encoded_data - (encoded_data % TEMPORAL_HASH)) / TEMPORAL_HASH;
+//	}
 	
 	public void send_broadcast(int channel, int data){
 		try{
 //			System.out.println("Sending on Channel : " + channel  +"  Data: " + data);
 			robot_controller.broadcast(channel, data);
 		} catch (Exception e){
-			print_exception(e);
+			Utilities.print_exception(e);
 		}
 	}
 	
@@ -507,7 +487,7 @@ public class Arobot {
 //			System.out.println("Readin Channel : " + channel  +"  Data: " + robot_controller.readBroadcast(channel));			
 			return robot_controller.readBroadcast(channel);
 		} catch (Exception e){
-			print_exception(e);
+			Utilities.print_exception(e);
 		}		
 		return 0;
 	}
@@ -538,8 +518,5 @@ public class Arobot {
 		}
 	}
 	
-	public void print_exception(Exception e){
-        System.out.println("Unexpected exception");
-        e.printStackTrace();
-	}
+
 }
