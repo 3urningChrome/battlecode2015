@@ -20,6 +20,9 @@ public class HQ extends Building  {
 	//Launcher Roles:
 	static final int LAUNCHER_DEFEND = 0;
 	static final int LAUNCHER_HARASS = 1;
+	
+	//generic Roles
+	static final int ROLE_START_POS = 0;
 
 	
 	public HQ(RobotController rc) {
@@ -38,17 +41,27 @@ public class HQ extends Building  {
 		
 		while(true){
 			attack_deadest_enemy_in_range();
-			perform_a_troop_census();			
-			update_strategy();				
+			perform_a_troop_census();
+			update_strategy();		
 			check_for_spawns();	
 			refresh_job_roles();
-			broadcast_role_locations();									
-			dish_out_supply();			
+			broadcast_role_locations();
+			dish_out_supply();		
 			robot_controller.yield();
 		}		
 	}
 	
 	private void initialise_max_job_roles() {
+		//currently buildings don't check for roles, so only apply to mobile bots.
+		//initialise all non-role bots to -1 (Speeds up role check for them)
+		send_broadcast(role_max_offset + role_channel_start[RobotType.BASHER.ordinal()] + ROLE_START_POS, -1);
+		send_broadcast(role_max_offset + role_channel_start[RobotType.BEAVER.ordinal()] + ROLE_START_POS, -1);
+		send_broadcast(role_max_offset + role_channel_start[RobotType.COMMANDER.ordinal()] + ROLE_START_POS, -1);
+		send_broadcast(role_max_offset + role_channel_start[RobotType.COMPUTER.ordinal()] + ROLE_START_POS, -1);
+		send_broadcast(role_max_offset + role_channel_start[RobotType.MINER.ordinal()] + ROLE_START_POS, -1);
+		send_broadcast(role_max_offset + role_channel_start[RobotType.SOLDIER.ordinal()] + ROLE_START_POS, -1);
+		send_broadcast(role_max_offset + role_channel_start[RobotType.TANK.ordinal()] + ROLE_START_POS, -1);
+		
 		//drones
 		send_broadcast(role_max_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS1, 1);
 		send_broadcast(role_max_offset + role_channel_start[RobotType.DRONE.ordinal()] + DRONE_HARASS2, 1);
@@ -138,6 +151,7 @@ public class HQ extends Building  {
 	}
 	
 	public void remove_roles(){
+		System.out.println("Removed Roles");
 		// this will be called to swarm.
 		//only ignore people here if they are not to swarm
 		//drones

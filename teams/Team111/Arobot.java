@@ -45,20 +45,19 @@ public class Arobot {
 	static int defence_location_channel_y = 4;	
 	static int override_saftey = 5;
 	static int cumulative_ore_spent = 6;
-	static int troop_count_channel = 1000; // (+ 21)
-	static int orders_broadcast_offset = 1050 + (HASH * HASH);
-	
-	static final int MAX_ROLES = 10;
+						static final int MAX_ROLES = 10;
 	static int[] role_channel_start = new int[]{0,MAX_ROLES,2*MAX_ROLES,3*MAX_ROLES,4*MAX_ROLES,5*MAX_ROLES,6*MAX_ROLES,7*MAX_ROLES,8*MAX_ROLES,9*MAX_ROLES,10*MAX_ROLES,11*MAX_ROLES,12*MAX_ROLES,13*MAX_ROLES,14*MAX_ROLES,15*MAX_ROLES,16*MAX_ROLES,17*MAX_ROLES,18*MAX_ROLES,19*MAX_ROLES,20*MAX_ROLES};
 	static int role_current_offset = 10;
 	static int role_max_offset = 220;
 	static int role_x_offset = 430;
 	static int role_y_offset = 640;
 	static int aggressive_offset = 850;
+	static int troop_count_channel = 2000; // (+ 21)
+	static int orders_broadcast_offset = 2050; // + (HASH * HASH);
 
 	//strategy
 	static int swarm_trigger = 0; // set in HQ
-	static boolean all_out_attack =false;
+	static boolean all_out_attack = false;
 	static int my_role = -1;
 	static int aggressive = 0;
 	
@@ -437,45 +436,9 @@ public class Arobot {
 		
 		return (return_location.x * HASH) + return_location.y;
 	}
-	
-//	public int encode_location(MapLocation encode_this_location){	
-//		System.out.println("Location to encode:" + encode_this_location.toString());
-//		System.out.println("Encoded Location (x) " + (HQ_location.x - encode_this_location.x) * HASH);
-//		System.out.println("Encoded Location (y) " + (HQ_location.y - encode_this_location.y));
-//		return ((encode_this_location.x - HQ_location.x) * HASH) + ((encode_this_location.y - HQ_location.y));
-//	}
-	
-//	public MapLocation decode_location(int encoded_location){
-//		System.out.println("Location to decode:" + encoded_location);
-
-//		int encoded_location_y = (encoded_location % HASH) + HQ_location.y;
-//		int encoded_location_x = ((encoded_location - encoded_location_y) / HASH) + HQ_location.x;
-
-//		System.out.println("decoded Location (x) " + (((encoded_location - encoded_location_y) / HASH) ));
-//		System.out.println("decoded Location (y) " + ((encoded_location % HASH) ));
-//		return new MapLocation(encoded_location_x,encoded_location_y);
-//	}
-	
-//	public int encode_exclusion_data(int damage, int end_round_num){
-//		if(end_round_num > TEMPORAL_HASH)
-//			end_round_num = TEMPORAL_HASH;
 		
-//		return (end_round_num * TEMPORAL_HASH) + damage;
-//	}
-	
-//	public int decode_exclusion_damage(int encoded_data){
-//		if(Clock.getRoundNum()> decode_exclusion_end_round(encoded_data))
-//			return 0;
-//		return encoded_data % TEMPORAL_HASH;
-//	}
-	
-//	public int decode_exclusion_end_round(int encoded_data){
-//		return (encoded_data - (encoded_data % TEMPORAL_HASH)) / TEMPORAL_HASH;
-//	}
-	
 	public void send_broadcast(int channel, int data){
 		try{
-//			System.out.println("Sending on Channel : " + channel  +"  Data: " + data);
 			robot_controller.broadcast(channel, data);
 		} catch (Exception e){
 			Utilities.print_exception(e);
@@ -483,8 +446,7 @@ public class Arobot {
 	}
 	
 	public int read_broadcast(int channel){
-		try{
-//			System.out.println("Readin Channel : " + channel  +"  Data: " + robot_controller.readBroadcast(channel));			
+		try{		
 			return robot_controller.readBroadcast(channel);
 		} catch (Exception e){
 			Utilities.print_exception(e);
@@ -495,11 +457,8 @@ public class Arobot {
 	public void dish_out_supply(){	
 		int start_turn = Clock.getRoundNum();
 		double dish_out_amount;
-//		if(all_out_attack){
-			dish_out_amount = robot_controller.getSupplyLevel();
-//		}else{
-//			dish_out_amount = 0;
-//		}
+		dish_out_amount = robot_controller.getSupplyLevel();
+
 		RobotInfo[] sensed_friendly_robots = robot_controller.senseNearbyRobots(GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED, my_team);	
 		
 		if(sensed_friendly_robots.length < 1)
@@ -508,10 +467,8 @@ public class Arobot {
 		dish_out_amount /= (sensed_friendly_robots.length + 1);
 		for (final RobotInfo sensed_friendly_robot: sensed_friendly_robots){
 			if(robot_mobile[sensed_friendly_robot.type.ordinal()] || robot_mobile[my_type.ordinal()] ==false){		
-			//	if(!sensed_friendly_robot.type.equals(RobotType.BEAVER) && !sensed_friendly_robot.type.equals(RobotType.MINER) && !sensed_friendly_robot.type.equals(RobotType.HQ)){
-				if(Clock.getRoundNum() > start_turn || Clock.getBytecodesLeft() < 550)
+				if(Clock.getRoundNum() > start_turn || Clock.getBytecodesLeft() < 600)
 					return;		
-				//dishout_supply + 
 				send_supply((int)(dish_out_amount - sensed_friendly_robot.supplyLevel), sensed_friendly_robot.location);	
 
 			}

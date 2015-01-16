@@ -3,6 +3,7 @@ package team111;
 import battlecode.common.Clock;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotInfo;
+import battlecode.common.RobotType;
 
 public abstract class Utilities {
 
@@ -76,6 +77,10 @@ public abstract class Utilities {
 		if(print){
 			System.out.println(msg + Clock.getBytecodeNum());
 		}
+	}
+
+	public static double get_ore_per_HP_amount(RobotType type) {
+		return type.oreCost/type.maxHealth;
 	}
 
 }

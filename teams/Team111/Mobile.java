@@ -1,5 +1,6 @@
 package team111;
 
+import battlecode.common.Clock;
 import battlecode.common.Direction;
 import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
@@ -12,6 +13,7 @@ public class Mobile extends Arobot {
 	
 	//Navigation
 	static MapLocation location;
+	static MapLocation previous_location;
 	static boolean bugging = false;
 	static int bugging_direction = 1;
 	static Direction last_heading;
@@ -55,7 +57,7 @@ public class Mobile extends Arobot {
 	public void basic_turn_loop(){
 		initialise();
 		enemy_towers = last_processed_enemy_towers;
-					
+		previous_location = robot_controller.getLocation();			
 		while(true){			
 			location = robot_controller.getLocation();
 			sensed_enemy_robots = robot_controller.senseNearbyRobots((int)(BEYOND_MAX_ATTACK_RANGE),enemy_team);
@@ -73,6 +75,8 @@ public class Mobile extends Arobot {
 					mine_this_location_if_this_is_my_destination();
 				}	
 			}
+			if(!previous_location.equals(location))
+				bugging = false;
 			move(robot_controller.getLocation().directionTo(get_my_bug_Nav_next_step(robot_controller.getLocation(), location)));
 			
 			attack_deadest_enemy_in_range();
@@ -111,7 +115,10 @@ public class Mobile extends Arobot {
 		for(int i=0; i<sensed_enemy_robots.length;i++){
 			positions_of_close_enemies[i] = sensed_enemy_robots[i].location;
 			attack_ranges_of_close_enemies[i] = get_attack_radius(sensed_enemy_robots[i].type);
+			System.out.println("My Micro Start: " + Clock.getBytecodeNum());
 			modify_attack_range_after_considering_relative_delays(i,sensed_enemy_robots[i]);
+			modify_attack_range_after_considering_relative_ore_damamge_inflicted_and_received(i, sensed_enemy_robots[i]);
+			System.out.println("My Micro end: " + Clock.getBytecodeNum());			
 			if(positions_of_close_enemies[i].distanceSquaredTo(robot_controller.getLocation()) <= attack_ranges_of_close_enemies[i])
 				I_am_indeed_in_danger = true;
 		}
@@ -119,26 +126,37 @@ public class Mobile extends Arobot {
 	}
 	
 	//--------------------------------------------MICRO--------------------------------------------------------------
+	private void modify_attack_range_after_considering_relative_ore_damamge_inflicted_and_received(int attack_range_position, RobotInfo robot_to_examine){
+		//if (enemy_ore_cost/Enemy_hp) * my_damamge > (my ore_cost/HP) * enemy_damage
+		if((Utilities.get_ore_per_HP_amount(robot_to_examine.type) * my_type.attackPower) > (Utilities.get_ore_per_HP_amount(my_type) * robot_to_examine.type.attackPower)){
+			System.out.println("Step up. ore damage is favorable");
+			attack_ranges_of_close_enemies[attack_range_position] = Utilities.increase_attack_radius(attack_ranges_of_close_enemies[attack_range_position], -1);
+		} else{
+			System.out.println("stand back. ore damage is not favorable");
+			attack_ranges_of_close_enemies[attack_range_position] = Utilities.increase_attack_radius(attack_ranges_of_close_enemies[attack_range_position], 1);
+		}
+	}
 
 	private void modify_attack_range_after_considering_relative_delays(int attack_range_position, RobotInfo robot_to_examine) {
 		RobotType enemy_type = robot_to_examine.type;
 		
 		int my_delay_incurred_by_move_and_shoot = my_type.movementDelay + my_type.loadingDelay + my_type.cooldownDelay;
 		
-		//can it shoot me if i step into it's outer fire zone.
+		//can it shoot me if i step into it's outer fire zone?.
 		int enemy_delay_incurred_by_cool_down = (int)robot_to_examine.weaponDelay; 
 		
-		//can it follow me and shoot before i can move away again. (assuming i move into it's fire zone this turn
+		//can it follow me and shoot before i can move away again?. (assuming i move into it's fire zone this turn
 		int enemy_delay_incurred_by_move_and_load = (int)robot_to_examine.coreDelay + enemy_type.loadingDelay;
 		
 		double my_total_delay = my_delay_incurred_by_move_and_shoot/(robot_controller.getSupplyLevel() > my_type.supplyUpkeep ? 1 : 0.5);
-System.out.println("My delay: " + my_total_delay);		
+//System.out.println("My delay: " + my_total_delay);		
 		double enemy_least_total_delay = Math.min(enemy_delay_incurred_by_cool_down/(robot_to_examine.supplyLevel > 0 ? 1 : 0.5),enemy_delay_incurred_by_move_and_load/(robot_to_examine.supplyLevel > 0 ? 1 : 0.5));
-System.out.println("Enemy delay: " + enemy_least_total_delay);			
+//System.out.println("Enemy delay: " + enemy_least_total_delay);			
 		if(!(enemy_least_total_delay < 1)){
 			if(my_total_delay < enemy_least_total_delay){
 				//seems we can be cheeky. (or die horribly because this is full of bugs)
 				attack_ranges_of_close_enemies[attack_range_position] = Utilities.increase_attack_radius(attack_ranges_of_close_enemies[attack_range_position], -1);
+				System.out.println("Step up. delays are favorable");
 			}
 		}
 		
@@ -156,6 +174,7 @@ System.out.println("Enemy delay: " + enemy_least_total_delay);
 			if(enemy_total_delay < my_least_total_delay){
 				//seems they may be able to cheek us back!
 				attack_ranges_of_close_enemies[attack_range_position] = Utilities.increase_attack_radius(attack_ranges_of_close_enemies[attack_range_position], 1);
+				System.out.println("stand back. delays are not favorable");
 			}
 		}		
 	}
@@ -180,16 +199,18 @@ System.out.println("Enemy delay: " + enemy_least_total_delay);
 
 			if (current_drones_in_role < max_drones_in_role && (my_role == i || my_role == -1)){
 				current_drones_in_role ++;
-				send_broadcast((role_current_offset + role_channel_start[my_type.ordinal()] + i), current_drones_in_role);
 				int x = read_broadcast(role_x_offset + role_channel_start[my_type.ordinal()] + i);
 				int y = read_broadcast(role_y_offset + role_channel_start[my_type.ordinal()] + i);
 				aggressive = read_broadcast(aggressive_offset + role_channel_start[my_type.ordinal()] + i);
 				my_role = i;
 				location = new MapLocation(x,y);
+				System.out.println("My_role: " + my_role);
+				send_broadcast((role_current_offset + role_channel_start[my_type.ordinal()] + i),current_drones_in_role);
 				return true;
 			}
 		}
 		my_role = -1;
+	//	System.out.println("I am roleless");		
 		return false;
 	}
 
@@ -326,12 +347,13 @@ System.out.println("Enemy delay: " + enemy_least_total_delay);
 	}
 	public MapLocation move_buggingly_toward_location(MapLocation start_pos, MapLocation end_pos){
 		Direction next_heading;
+		Direction direction_to_end_pos = start_pos.directionTo(end_pos);
 		MapLocation next_location;
 		for(int directionalOffset:directionalLooksMulti){
 			next_heading = directions[(last_heading.ordinal()+(directionalOffset*bugging_direction)+8)%8];
 			next_location = start_pos.add(next_heading);
 			if(terrain_is_navigatable(next_location) && is_free_from_exclusion(next_location)){
-				if(next_heading.equals(start_pos.directionTo(end_pos))){
+				if(next_heading.equals(direction_to_end_pos)){
 					bugging = false;
 				}
 				last_heading = next_heading;
@@ -345,7 +367,7 @@ System.out.println("Enemy delay: " + enemy_least_total_delay);
 		TerrainTile nextStep = robot_controller.senseTerrainTile(test_location);
 		if((nextStep == TerrainTile.OFF_MAP))
 			return false; // or summint else? we are here. destination is of map.		
-		if ((nextStep==TerrainTile.VOID && !(my_type == RobotType.DRONE) ))
+		if ((nextStep==TerrainTile.VOID && !(my_type.equals(RobotType.DRONE)) ))
 			return false;
 		return true;
 	}
@@ -377,4 +399,5 @@ System.out.println("Enemy delay: " + enemy_least_total_delay);
 		}
 		return true;
 	}
+	
 }
