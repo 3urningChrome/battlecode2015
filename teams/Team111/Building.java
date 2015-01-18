@@ -25,7 +25,7 @@ public class Building extends Arobot {
 			robot_controller.yield();
 		}		
 	}	
-		
+	//--------------------------------------------SPAWNING--------------------------------------------------------------		
 	public void check_for_spawns() {
 		if(robot_controller.isCoreReady())
 			if(my_type.canSpawn() && possible_spawn_and_building_ordinals != null)

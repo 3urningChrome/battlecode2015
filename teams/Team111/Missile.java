@@ -8,7 +8,7 @@ import battlecode.common.RobotController;
 public class Missile {
 
 	static final int HASH = Math.max(GameConstants.MAP_MAX_WIDTH,GameConstants.MAP_MAX_HEIGHT);
-	static final int orders_broadcast_offset = 200 + (HASH * HASH);
+	static final int orders_broadcast_offset = 3050; 
 	static RobotController rc;
 	
 	Missile(RobotController the_rc) {
@@ -16,21 +16,22 @@ public class Missile {
 		//turn 1
 		//read direction from channel
 		int direction = read_broadcast(orders_broadcast_offset + location_channel(rc.getLocation()));
+	//	System.out.println("Read Direction: " + Direction.values()[direction]);
 		move(Direction.values()[direction]);
 		rc.yield();
-		//turn 2 - 6
-		for(int i =0; i < 5;i++){
+		//turn 2 - 5
+		for(int i =0; i < 4;i++){
 			if(rc.isCoreReady()){
 				direction = read_broadcast(orders_broadcast_offset + location_channel(rc.getLocation()));
 				move(Direction.values()[direction]);
-				if(rc.senseNearbyRobots(2, rc.getTeam().opponent()).length > 0){
-					if(rc.senseNearbyRobots(2, rc.getTeam()).length < 1){
-						explode();
-						rc.yield();
-					}
-				}
 			}
-			if(i == 4)
+			if(rc.senseNearbyRobots(2, rc.getTeam().opponent()).length > 0){
+	//			if(rc.senseNearbyRobots(2, rc.getTeam()).length < 1){
+				explode();
+				rc.yield();
+		//		}
+			}
+			if(i == 3)
 				rc.disintegrate();
 			rc.yield();
 		}

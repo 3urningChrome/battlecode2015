@@ -45,13 +45,14 @@ public abstract class Utilities {
         System.out.println("Unexpected exception");
         e.printStackTrace();
 	}
+	
 	public static int increase_attack_radius(int attack_radius, int i) {
 		if (i==0)
 			return attack_radius;
 		
 		double root = Math.sqrt(attack_radius);
 		root = (int)(root+ 1);
-		return (int)Math.pow((root + i),2);
+		return ((int)Math.pow((root + i),2));
 	}
 	
 	public static FastLocSet process_squares_in_range(MapLocation start_point, int radius, boolean remove, FastLocSet excluded_locations){
