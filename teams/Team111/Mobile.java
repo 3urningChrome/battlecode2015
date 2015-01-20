@@ -26,9 +26,11 @@ public class Mobile extends Arobot {
 	static MapLocation[] positions_of_very_close_friends;
 	static RobotInfo[] very_close_friends;
 	static int[] attack_ranges_of_close_enemies;
+	static MapLocation missile_exclusion_zone = null;
 
 	//Role Warfare
 	static int assigned_job = 0;
+	static int count_down = 50;
 	
 	//Mining
 	static int mining_search_range = 10;
@@ -58,58 +60,87 @@ public class Mobile extends Arobot {
 		initialise();
 		enemy_towers = last_processed_enemy_towers;
 		previous_location = robot_controller.getLocation();			
-		while(true){			
+		while(true){		
+//			System.out.println("Start turn: " + Clock.getBytecodeNum());
 			allow_bugging = true;
-			location = robot_controller.getLocation();
+			location = get_default_location();
 			sensed_enemy_robots = robot_controller.senseNearbyRobots((int)(BEYOND_MAX_ATTACK_RANGE),enemy_team);
+//			System.out.println("Sense Finished: " + Clock.getBytecodeNum());
 			sense_very_close_friends();
+	//		System.out.println("close friends finished: " + Clock.getBytecodeNum());
+			send_out_SOS_if_help_is_needed();	
+	//		System.out.println("Sos sent: " + Clock.getBytecodeNum());
 			
-			send_out_SOS_if_help_is_needed();		
-			set_location_for_my_role();			
+			if(!robot_controller.canMine())
+				read_swarm_location();		
+	//		System.out.println("swarm location: " + Clock.getBytecodeNum());
+			
 			find_enemy_to_go_after_if_i_am_aggressive();
+	//		System.out.println("target enemy: " + Clock.getBytecodeNum());
 				
-			System.out.println("Micro_start:" + Clock.getBytecodeNum());
+//			System.out.println("Micro_start:" + Clock.getBytecodeNum());
 			if(!sense_hostile_activity()){
-				perform_a_troop_census();				
-				update_strategy();	
-				try_to_process_builds();				
+//				System.out.println("hostile done: " + Clock.getBytecodeNum());
+				if(!robot_controller.isCoreReady()){
+					perform_a_troop_census();	
+	//				System.out.println("troop count done: " + Clock.getBytecodeNum());
+					update_strategy();	
+	//				System.out.println("strat updated: " + Clock.getBytecodeNum());
+				}
+				try_to_process_builds();
+	//			System.out.println("build stuff: " + Clock.getBytecodeNum());
 				if(i_can_mine()){
-					evaluate_mining_position_and_find_a_new_location_if_needed();				
+	//				System.out.println("starting mining: " + Clock.getBytecodeNum());
+					evaluate_mining_position_and_find_a_new_location_if_needed();
+	//				System.out.println("eval mining: " + Clock.getBytecodeNum());
 					mine_this_location_if_this_is_my_destination();
+	//				System.out.println("mine it: " + Clock.getBytecodeNum());
 				}	
 			}
-			System.out.println("Micro_end:" + Clock.getBytecodeNum());
+//			System.out.println("Micro_end:" + Clock.getBytecodeNum());
+	//		System.out.println("end hostile if not miner: " + Clock.getBytecodeNum());
 			
-			if(!previous_location.equals(location))
-				bugging = false;
-			if(robot_controller.getLocation().distanceSquaredTo(location) <= my_type.attackRadiusSquared)
+			if(!i_can_mine() && robot_controller.getLocation().distanceSquaredTo(location) <= my_type.attackRadiusSquared)
 				allow_bugging = false;
-			move(robot_controller.getLocation().directionTo(get_my_bug_Nav_next_step(robot_controller.getLocation(), location)));
+			if(robot_controller.isCoreReady())
+				move(robot_controller.getLocation().directionTo(get_my_bug_Nav_next_step(robot_controller.getLocation(), location)));
+						
+			if(Clock.getRoundNum() % 15 ==0)
+				enemy_towers = robot_controller.senseEnemyTowerLocations();
 			
+			
+	//		System.out.println("Nav done: " + Clock.getBytecodeNum());
 			attack_deadest_enemy_in_range();
+	//		System.out.println("attack done: " + Clock.getBytecodeNum());
 			dish_out_supply();
+	//		System.out.println("send supply: " + Clock.getBytecodeNum());
 
 			robot_controller.setIndicatorString(0, location.toString());
+			robot_controller.setIndicatorString(0, "Bugging: " + bugging );
 //			Utilities.print_byte_usage("End of basic_turn_loop: ");
 			robot_controller.yield();
 		}
 	}
+	public MapLocation get_default_location(){
+		return robot_controller.getLocation();
+	}
 
 	//--------------------------------------------SCANNING--------------------------------------------------------------
 	
-	private void sense_very_close_friends() {
-		very_close_friends = robot_controller.senseNearbyRobots(8,my_team);
+	public void sense_very_close_friends() {
+		very_close_friends = robot_controller.senseNearbyRobots(2,my_team);
 		if(very_close_friends == null){
 			positions_of_very_close_friends = null;
 			return;
 		}
+			
 		positions_of_very_close_friends = new MapLocation[very_close_friends.length];
 		for(int i=0; i<very_close_friends.length;i++){
 			positions_of_very_close_friends[i] = very_close_friends[i].location;
 		}		
 	}
 	
-	private boolean sense_hostile_activity() {
+	public boolean sense_hostile_activity() {
 		if(sensed_enemy_robots == null){
 			positions_of_close_enemies = null;
 			attack_ranges_of_close_enemies = null;
@@ -122,7 +153,13 @@ public class Mobile extends Arobot {
 		for(int i=0; i<sensed_enemy_robots.length;i++){
 			positions_of_close_enemies[i] = sensed_enemy_robots[i].location;
 			attack_ranges_of_close_enemies[i] = get_attack_radius(sensed_enemy_robots[i].type);
-			modify_attack_range_after_considering_relative_delays(i,sensed_enemy_robots[i]);
+			if(sensed_enemy_robots[i].type.equals(RobotType.HQ) || sensed_enemy_robots[i].type.equals(RobotType.TOWER)){
+				attack_ranges_of_close_enemies[i] = 0;
+			}else{
+				if(sensed_enemy_robots[i].type.equals(RobotType.MISSILE))
+					missile_exclusion_zone = sensed_enemy_robots[i].location.add(robot_controller.getLocation().directionTo(sensed_enemy_robots[i].location),2);
+				modify_attack_range_after_considering_relative_delays(i,sensed_enemy_robots[i]);
+			}
 			if(positions_of_close_enemies[i].distanceSquaredTo(robot_controller.getLocation()) <= attack_ranges_of_close_enemies[i])
 				I_am_indeed_in_danger = true;
 		}
@@ -130,7 +167,7 @@ public class Mobile extends Arobot {
 	}
 	
 	//--------------------------------------------MICRO--------------------------------------------------------------
-	private boolean i_do_more_ore_damage(RobotInfo robot_to_examine){
+	public boolean i_do_more_ore_damage(RobotInfo robot_to_examine){
 		//TODO should this be DPS as it is now, or should it be shot damage?? (DPS seems to make more sense, but I'm worried properly coded drones
 		//can hit and run, keeping their DPS at max, but reducing mine as a result. therefore reducing my_ore_damage to below theirs.
 
@@ -140,12 +177,12 @@ public class Mobile extends Arobot {
 		double my_ore_damage = Utilities.get_ore_per_HP_amount(robot_to_examine.type) * ((my_type.attackPower / my_type.attackDelay) * my_delay_reduction_rate);
 		double enemy_ore_damage = Utilities.get_ore_per_HP_amount(my_type) * ((robot_to_examine.type.attackPower / robot_to_examine.type.attackDelay)*enemy_delay_reduction_rate);
 		
-		if(my_ore_damage > enemy_ore_damage)
+		if(my_ore_damage >= enemy_ore_damage)
 			return true;
 		return false;
 	}
 	
-	private void find_enemy_to_go_after_if_i_am_aggressive() {
+	public void find_enemy_to_go_after_if_i_am_aggressive() {
 		if(aggressive == 0)
 			return;
 		if(sensed_enemy_robots == null)
@@ -164,15 +201,18 @@ public class Mobile extends Arobot {
 	}
 	
 	public void modify_attack_range_after_considering_relative_delays(int attack_range_position, RobotInfo robot_to_examine){
+		
+		if(!robot_to_examine.type.canAttack())
+			return;
 		double my_delay_reduction_rate = (robot_controller.getSupplyLevel() > my_type.supplyUpkeep ? 1 : 0.5);
 		double enemy_delay_reduction_rate = (robot_to_examine.supplyLevel > 0 ? 1 : 0.5);
 		
 		int my_attack_delay = (int) ((robot_controller.getWeaponDelay() + my_type.loadingDelay)/my_delay_reduction_rate);
 		int enemy_move_delay = (int) ((robot_to_examine.coreDelay)/enemy_delay_reduction_rate); //move del
 		
-		if(i_do_more_ore_damage(robot_to_examine) || very_close_friends.length > sensed_enemy_robots.length){
+		if(i_do_more_ore_damage(robot_to_examine)){
 			//if i can move n shoot before they can shoot and run reduce
-			if(my_attack_delay < enemy_move_delay)
+			if(my_attack_delay < enemy_move_delay || very_close_friends.length > sensed_enemy_robots.length)
 				attack_ranges_of_close_enemies[attack_range_position] = Utilities.increase_attack_radius(attack_ranges_of_close_enemies[attack_range_position], -1);
 		}else{
 			//keep 1 extra square away
@@ -184,6 +224,21 @@ public class Mobile extends Arobot {
 	
 	//--------------------------------------------ROLE-WARFARE--------------------------------------------------------------
 
+	public void read_swarm_location(){
+		all_out_attack = false;
+		int x = read_broadcast(swarm_location_channel_x);
+		int y = read_broadcast(swarm_location_channel_y);
+		if(x!= 0 && y!= 0){
+			location = new MapLocation(x,y);
+		//	System.out.println("Swarm Point set to :" + location);
+				aggressive = 0;
+				if(robot_controller.senseNearbyRobots(9,my_team).length > 4)
+					all_out_attack = true;
+		} else{
+		}
+	}
+	
+	
 	public boolean set_location_for_my_role(){
 		int i_start=0;
 		int loop_max = 	MAX_ROLES;	
@@ -217,7 +272,7 @@ public class Mobile extends Arobot {
 
 	//--------------------------------------------MINING--------------------------------------------------------------
 	
-	private boolean i_can_mine(){
+	public boolean i_can_mine(){
 		return robot_controller.canMine();
 	}
 	
@@ -242,7 +297,7 @@ public class Mobile extends Arobot {
 				for(int i = 1; i < mining_search_range; i++)
 					for (final Direction direction: directions){
 						MapLocation test_location = robot_controller.getLocation().add(direction,i);
-						if(my_mining_rate(test_location) > mining_move_threshold){
+						if(my_mining_rate(test_location) > mining_move_threshold && terrain_is_navigatable(test_location) && is_free_from_exclusion(test_location)){
 							try{
 								if(robot_controller.canSenseLocation(test_location) && !robot_controller.isLocationOccupied(test_location)){
 									location = test_location;
@@ -306,8 +361,9 @@ public class Mobile extends Arobot {
 	
 	public boolean build_structure(RobotType required_type){			
 			if(robot_controller.hasBuildRequirements(required_type))
-				for (final Direction direction: directions)
-					if(robot_controller.canBuild(direction, required_type))
+				for (final Direction direction: directions){
+					MapLocation test_location = robot_controller.getLocation().add(direction);
+					if((test_location.x + test_location.y) % 2 == 0 && robot_controller.canBuild(direction, required_type))
 						try{
 							if(!robot_controller.isCoreReady())
 								return true;
@@ -318,6 +374,8 @@ public class Mobile extends Arobot {
 						} catch(Exception e){
 							Utilities.print_exception(e);
 						}
+				}
+		//	location = Utilities.find_closest(HQ_location, robot_controller.senseTowerLocations());
 		return false;
 	}	
 	
@@ -327,30 +385,37 @@ public class Mobile extends Arobot {
 //TODO handle is destination is off the map/inaccessable. stop bugging and wait at some point.
 	
 	public MapLocation get_my_bug_Nav_next_step(MapLocation start_pos, MapLocation end_pos){
-		if(!bugging){
-			Direction next_direction = start_pos.directionTo(end_pos);
-			if(move_straight_toward_location(start_pos,next_direction))
-				return start_pos.add(next_direction);
-		}
-		if(allow_bugging){
+		if(!previous_location.equals(end_pos))
+			bugging = false;
+		
+		previous_location = end_pos;
+		if(!bugging)		
+			return move_straight_toward_location(start_pos,end_pos);
+		if(allow_bugging)
 			return move_buggingly_toward_location(start_pos,end_pos);
-		}
 		return robot_controller.getLocation();
 	}
 	
-	public boolean move_straight_toward_location(MapLocation start_pos, Direction move_direction){
-		MapLocation test_location = start_pos.add(move_direction);
-		if(terrain_is_navigatable(test_location) && is_free_from_exclusion(test_location)){
-			return true; // head straight for destination.
+	public MapLocation move_straight_toward_location(MapLocation start_pos, MapLocation end_pos){
+		Direction next_direction = start_pos.directionTo(end_pos);
+		MapLocation test_location = start_pos.add(next_direction);
+		if(terrain_is_navigatable(test_location) && is_free_from_exclusion(test_location) && available_location(test_location)){
+			return test_location; // head straight for destination.
 		} else{
 			if(terrain_is_off_map(test_location)){
-				return true; // no better direction to head to get to (off_map) destination.
+				return test_location; // no better direction to head to get to (off_map) destination.
 			} else{
-				bugging = true;
-				last_heading = move_direction;
+				if(!available_location(test_location)){
+					//friend on it. don't bug around them. move around them
+					last_heading = next_direction;
+					//return move_buggingly_toward_location(start_pos,end_pos);
+				} else{
+					bugging = true;
+					last_heading = next_direction;
+				}
 			}
 		}
-		return false;
+		return move_buggingly_toward_location(start_pos,end_pos);
 	}
 	
 	public MapLocation move_buggingly_toward_location(MapLocation start_pos, MapLocation end_pos){
@@ -360,16 +425,17 @@ public class Mobile extends Arobot {
 		for(int directionalOffset:directionalLooksMulti){
 			next_heading = directions[(last_heading.ordinal()+(directionalOffset*bugging_direction)+8)%8];
 			next_location = start_pos.add(next_heading);
-			if(terrain_is_navigatable(next_location) && is_free_from_exclusion(next_location)){
+			if(terrain_is_navigatable(next_location) && is_free_from_exclusion(next_location) && available_location(next_location)){
 				if(next_heading.equals(direction_to_end_pos))
 					bugging = false;
 				last_heading = next_heading;
 				return next_location;
 			} else{
 				if(terrain_is_off_map(next_location)){
+				//	System.out.println("Off map. Stop debugging");
 					bugging = false; //stop bugging around outer edge of map. no point what so ever!
 					bugging_direction *= (-1); // reverse bugging direction so that next time, we go the other way.
-					return get_my_bug_Nav_next_step(start_pos,end_pos); // try again, this time bugging the other way.
+					//return get_my_bug_Nav_next_step(start_pos,end_pos); // try again, this time bugging the other way.
 				}
 			}
 		}
@@ -386,33 +452,43 @@ public class Mobile extends Arobot {
 	}
 	
 	public boolean terrain_is_off_map(MapLocation test_location){
-		if((test_location.equals(TerrainTile.OFF_MAP)))
+		TerrainTile nextStep = robot_controller.senseTerrainTile(test_location);
+		//System.out.println("Off Map?" + test_location);
+		if((nextStep.equals(TerrainTile.OFF_MAP)))
 			return true;
 		return false;
 	}
 	
 	public boolean is_free_from_exclusion(MapLocation test_location){
-		//HQ
-		if(test_location.distanceSquaredTo(enemy_HQ_Location) < 64)
-			return false;
-		//Towers
-		for(MapLocation tower:enemy_towers)
-			if(test_location.distanceSquaredTo(tower) < 25)
-				return false;				
+			//HQ
+			if(!location.equals(enemy_HQ_Location) && test_location.distanceSquaredTo(enemy_HQ_Location) < get_attack_radius(RobotType.HQ))
+				return false;
+			//Towers
+			for(MapLocation tower:enemy_towers)
+				if(!location.equals(tower) && test_location.distanceSquaredTo(tower) < 25)
+					return false;	
 		//enemies
 		if(positions_of_close_enemies != null){
 			int num_of_loops = positions_of_close_enemies.length;
 			for(int i=0; i<num_of_loops;i++)
-				if(test_location.distanceSquaredTo(positions_of_close_enemies[i]) <= attack_ranges_of_close_enemies[i])
+				if(!location.equals(positions_of_close_enemies[i]) && test_location.distanceSquaredTo(positions_of_close_enemies[i]) <= attack_ranges_of_close_enemies[i])
 					return false;
 		}
+		//missiles
+		if(!all_out_attack)
+			if(missile_exclusion_zone != null && test_location.distanceSquaredTo(missile_exclusion_zone) < 81)
+				return false;
+		return true;
+	}
+	
+	public boolean available_location(MapLocation test_location){
 		//friends
 		if(positions_of_very_close_friends != null){
 			int num_of_loops = positions_of_very_close_friends.length;
 			for(int i=0; i<num_of_loops;i++)
-				if(test_location.equals(positions_of_very_close_friends[i]))
+				if(!location.equals(positions_of_very_close_friends[i]) && test_location.equals(positions_of_very_close_friends[i]))
 					return false;
-		}
+		}	
 		return true;
 	}
 }

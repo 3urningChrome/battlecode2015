@@ -32,9 +32,11 @@ public class Missile {
 		//		}
 			}
 			if(i == 3)
-				rc.disintegrate();
+				//rc.disintegrate();
 			rc.yield();
 		}
+		explode();
+		rc.yield();
 	}
 	
 	public int location_channel(MapLocation encode_this_location){

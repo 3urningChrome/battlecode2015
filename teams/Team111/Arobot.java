@@ -121,7 +121,7 @@ public class Arobot {
 		robot_max[RobotType.AEROSPACELAB.ordinal()] = 0;
 		robot_max[RobotType.BARRACKS.ordinal()] = 0;
 		robot_max[RobotType.BASHER.ordinal()] = 0;
-		robot_max[RobotType.BEAVER.ordinal()] = 0;
+		robot_max[RobotType.BEAVER.ordinal()] = 1;
 		robot_max[RobotType.COMMANDER.ordinal()] = 0;
 		robot_max[RobotType.COMPUTER.ordinal()] = 0;
 		robot_max[RobotType.DRONE.ordinal()] = 0;
@@ -144,7 +144,8 @@ public class Arobot {
 	public void update_strategy(){
 		//medium_map_drone_harrass_launcher_swarm();
 		//drone_contain();
-		soldier_protect_tank_swarm();
+		//soldier_protect_tank_swarm();
+		mix_team();
 	}
 	
 	private void initialise_spawn_build_list() {
@@ -203,6 +204,88 @@ public class Arobot {
 			break;
 		}
 	}
+	//--------------------------------------------STRATEGY-(Soldier swarm)--------------------------------------------------------------
+	public void Soldier_swarm(){
+		robot_max[RobotType.BEAVER.ordinal()] = 1;
+		robot_max[RobotType.MINERFACTORY.ordinal()] = 1;
+		robot_max[RobotType.MINER.ordinal()] = 20;
+		robot_max[RobotType.TANK.ordinal()] = 9999;
+		//robot_max[RobotType.LAUNCHER.ordinal()] = 3;
+		robot_max[RobotType.SOLDIER.ordinal()] = 9999;
+		robot_max[RobotType.DRONE.ordinal()] = 8;
+		robot_max[RobotType.HELIPAD.ordinal()] = 1;
+		
+		if(Clock.getRoundNum()> 350){
+			robot_max[RobotType.DRONE.ordinal()] = 0;
+		}
+		if(robot_census[RobotType.MINERFACTORY.ordinal()] > 0)
+			robot_max[RobotType.BARRACKS.ordinal()] = 1;
+
+		if(robot_census[RobotType.BARRACKS.ordinal()] > 0){
+			if(robot_max[RobotType.TANKFACTORY.ordinal()] == 0)
+				robot_max[RobotType.TANKFACTORY.ordinal()] = 1;
+	//		robot_max[RobotType.AEROSPACELAB.ordinal()] = 1;
+		}
+		
+		if(robot_controller.getTeamOre() > 800 ){
+	//		robot_max[RobotType.TANKFACTORY.ordinal()] = 3;
+			robot_max[RobotType.BARRACKS.ordinal()] = 4;
+		}
+		
+		if(robot_max[RobotType.TANKFACTORY.ordinal()] == 3){
+			robot_max[RobotType.BEAVER.ordinal()] = 1;
+			robot_max[RobotType.SUPPLYDEPOT.ordinal()] = robot_census[RobotType.SUPPLYDEPOT.ordinal()]+=1;
+		}
+
+		if(Clock.getRoundNum()> (TEMPORAL_HASH - 110)){
+			robot_max[RobotType.HANDWASHSTATION.ordinal()] = 100;
+			robot_max[RobotType.DRONE.ordinal()] = 0;
+			robot_max[RobotType.LAUNCHER.ordinal()] = 0;
+		} 
+	}	
+	
+	//--------------------------------------------STRATEGY-(Mixed.)--------------------------------------------------------------
+	public void mix_team(){
+		robot_max[RobotType.BEAVER.ordinal()] = 2;
+		robot_max[RobotType.MINERFACTORY.ordinal()] = 1;
+		robot_max[RobotType.MINER.ordinal()] = 20;
+		robot_max[RobotType.TANK.ordinal()] = 9999;
+		robot_max[RobotType.LAUNCHER.ordinal()] = 3;
+		robot_max[RobotType.SOLDIER.ordinal()] = 5;
+		robot_max[RobotType.DRONE.ordinal()] = 8;
+		robot_max[RobotType.HELIPAD.ordinal()] = 1;
+		
+		if(Clock.getRoundNum()> 350){
+			robot_max[RobotType.DRONE.ordinal()] = 0;
+		}
+		if(robot_census[RobotType.MINERFACTORY.ordinal()] > 0)
+			robot_max[RobotType.BARRACKS.ordinal()] = 1;
+
+		if(robot_census[RobotType.BARRACKS.ordinal()] > 0){
+			if(robot_max[RobotType.TANKFACTORY.ordinal()] == 0)
+				robot_max[RobotType.TANKFACTORY.ordinal()] = 1;
+			robot_max[RobotType.AEROSPACELAB.ordinal()] = 1;
+		}
+		
+		if(robot_controller.getTeamOre() > 800 ){
+			robot_max[RobotType.TANKFACTORY.ordinal()] = 3;
+		}
+		
+		if(robot_controller.getTeamOre() > 1200 ){
+			robot_max[RobotType.LAUNCHER.ordinal()] = 999;
+		}
+		
+		if(robot_census[RobotType.TANK.ordinal()] > 10 ){
+			robot_max[RobotType.BEAVER.ordinal()] = 3;
+			robot_max[RobotType.SUPPLYDEPOT.ordinal()] = 10;
+		}
+
+		if(Clock.getRoundNum()> (TEMPORAL_HASH - 110)){
+			robot_max[RobotType.HANDWASHSTATION.ordinal()] = 100;
+			robot_max[RobotType.DRONE.ordinal()] = 0;
+			robot_max[RobotType.LAUNCHER.ordinal()] = 0;
+		} 
+	}	
 	//--------------------------------------------STRATEGY-(SOLDIER_PROTECT_TANK_SWARM)--------------------------------------------------------------
 	public void soldier_protect_tank_swarm(){
 		robot_max[RobotType.BEAVER.ordinal()] = 1;
@@ -274,6 +357,9 @@ public class Arobot {
 			robot_max[RobotType.LAUNCHER.ordinal()] = 0;
 		} 
 		
+		if(robot_max[RobotType.MINER.ordinal()] > 35)
+			robot_max[RobotType.MINER.ordinal()] = 35;
+		
 	}
 	//--------------------------------------------STRATEGY-(MEDIUM_MAP_DRONE_HARRASS_LAUNCHER_SWARM)--------------------------------------------------------------
 	public void medium_map_drone_harrass_launcher_swarm(){
@@ -334,28 +420,29 @@ public class Arobot {
 					break;		
 			}
 			if(hq_splash){
-				attack_radius = Utilities.increase_attack_radius(attack_radius, 1);
+				//attack_radius = Utilities.increase_attack_radius(attack_radius, 1);
+				attack_radius = 65;
 			}
 			return attack_radius;
 		case LAUNCHER:
-			return 2; //was 36
+			return 0; //was 36
 		case MISSILE:
-			return 15;
+			return 0; // was 15
 		default:
 			return query_type.attackRadiusSquared;
 		}
 	}
 	
 	public boolean attack_deadest_enemy_in_range(){
-		System.out.println("starting attack");
+//		System.out.println("starting attack");
 		if(my_type.canAttack()){
-			System.out.println("can attack");
+//			System.out.println("can attack");
 			if(robot_controller.isWeaponReady()){
-				System.out.println("Weapon is ready");
+//				System.out.println("Weapon is ready");
 				int attack_radius = get_my_attack_radius();
 				RobotInfo[] close_enemies = robot_controller.senseNearbyRobots(attack_radius, enemy_team);
 				if(close_enemies.length > 0){
-					System.out.println("enemies in range");
+//					System.out.println("enemies in range");
 					int num_of_loops = close_enemies.length;
 					double enemy_health = 9999;
 					int attack_pos = 0;
@@ -366,16 +453,16 @@ public class Arobot {
 								attack_pos = i;
 							}
 					}
-					System.out.println("atacking robot: " + close_enemies[attack_pos].ID);
+//					System.out.println("atacking robot: " + close_enemies[attack_pos].ID);
 					try{
 						if(robot_controller.getLocation().distanceSquaredTo(close_enemies[attack_pos].location) > GameConstants.HQ_BUFFED_ATTACK_RADIUS_SQUARED){
 							MapLocation newLocation = close_enemies[attack_pos].location.add(robot_controller.getLocation().directionTo(close_enemies[attack_pos].location).opposite());
 							if(robot_controller.getLocation().distanceSquaredTo(newLocation) <= GameConstants.HQ_BUFFED_ATTACK_RADIUS_SQUARED)
 								robot_controller.attackLocation(newLocation);
-							System.out.println("location too far. adjusting. FIRE!");
+//							System.out.println("location too far. adjusting. FIRE!");
 						}else{
 							robot_controller.attackLocation(close_enemies[attack_pos].location);
-							System.out.println("FIRE");
+//							System.out.println("FIRE");
 						}
 						return true;
 					} catch (Exception e){
@@ -383,7 +470,7 @@ public class Arobot {
 					}
 				}
 			} else{
-				System.out.println("Weapon is not ready");			
+//				System.out.println("Weapon is not ready");			
 			}
 		}
 		return false;
@@ -431,13 +518,24 @@ public class Arobot {
 		if(sensed_friendly_robots.length < 1)
 			return;
 		
-		dish_out_amount /= (sensed_friendly_robots.length + 1);
+		int round_limit = my_type.bytecodeLimit - 650;
+		if(robot_mobile[my_type.ordinal()])
+			round_limit = 4000;
+		dish_out_amount /= sensed_friendly_robots.length +1;
 		for (final RobotInfo sensed_friendly_robot: sensed_friendly_robots){
 			//always send to mobile robots, or always send to everyone if I am a building.
-			if(robot_mobile[sensed_friendly_robot.type.ordinal()] || robot_mobile[my_type.ordinal()] ==false){		
-				if(Clock.getBytecodesLeft() < 600)
+			if(robot_mobile[sensed_friendly_robot.type.ordinal()] || (robot_mobile[my_type.ordinal()] ==false && sensed_friendly_robot.type.equals(RobotType.TANKFACTORY))){
+				if(!(my_type.equals(RobotType.TANK) && !sensed_friendly_robot.type.equals(RobotType.TANK))){
+	//			if((robot_mobile[sensed_friendly_robot.type.ordinal()] && robot_mobile[my_type.ordinal()] ==false))
+	//				dish_out_amount = robot_controller.getSupplyLevel()/2;
+//					if(my_type.equals(RobotType.BEAVER) || my_type.equals(RobotType.MINER) || my_type.equals(RobotType.LAUNCHER))
+//						dish_out_amount = robot_controller.getSupplyLevel() - 100;
+			//	if(sensed_friendly_robot.type.equals(RobotType.TANK) && ((my_type.equals(RobotType.MINER) || (my_type.equals(RobotType.LAUNCHER) || (my_type.equals(RobotType.BEAVER))))))
+			//		dish_out_amount = robot_controller.getSupplyLevel() - 100;
+				if(Clock.getBytecodeNum() > round_limit)
 					return;		
 				send_supply((int)(dish_out_amount), sensed_friendly_robot.location);	
+				}
 			}
 		}
 	}
