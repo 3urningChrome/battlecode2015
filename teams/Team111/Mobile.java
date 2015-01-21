@@ -176,8 +176,10 @@ public class Mobile extends Arobot {
 		
 		double my_ore_damage = Utilities.get_ore_per_HP_amount(robot_to_examine.type) * ((my_type.attackPower / my_type.attackDelay) * my_delay_reduction_rate);
 		double enemy_ore_damage = Utilities.get_ore_per_HP_amount(my_type) * ((robot_to_examine.type.attackPower / robot_to_examine.type.attackDelay)*enemy_delay_reduction_rate);
+		if(robot_to_examine.type.equals(RobotType.MINER))
+			enemy_ore_damage = 0;
 		
-		if(my_ore_damage >= enemy_ore_damage)
+		if(my_ore_damage > enemy_ore_damage)
 			return true;
 		return false;
 	}
@@ -215,7 +217,7 @@ public class Mobile extends Arobot {
 			if(my_attack_delay < enemy_move_delay || very_close_friends.length > sensed_enemy_robots.length)
 				attack_ranges_of_close_enemies[attack_range_position] = Utilities.increase_attack_radius(attack_ranges_of_close_enemies[attack_range_position], -1);
 		}else{
-			//keep 1 extra square away
+//			//keep 1 extra square away
 			int new_attack_range = Utilities.increase_attack_radius(attack_ranges_of_close_enemies[attack_range_position], 1);
 			if (new_attack_range < robot_controller.getLocation().distanceSquaredTo(robot_to_examine.location) ) 
 				attack_ranges_of_close_enemies[attack_range_position] =new_attack_range;
@@ -415,7 +417,10 @@ public class Mobile extends Arobot {
 				}
 			}
 		}
-		return move_buggingly_toward_location(start_pos,end_pos);
+		if(allow_bugging)
+			return move_buggingly_toward_location(start_pos,end_pos);
+		
+		return robot_controller.getLocation();
 	}
 	
 	public MapLocation move_buggingly_toward_location(MapLocation start_pos, MapLocation end_pos){
@@ -464,9 +469,12 @@ public class Mobile extends Arobot {
 			if(!location.equals(enemy_HQ_Location) && test_location.distanceSquaredTo(enemy_HQ_Location) < get_attack_radius(RobotType.HQ))
 				return false;
 			//Towers
-			for(MapLocation tower:enemy_towers)
+			for(MapLocation tower:enemy_towers){
 				if(!location.equals(tower) && test_location.distanceSquaredTo(tower) < 25)
-					return false;	
+					return false;
+				if(location.equals(tower))
+					return true;
+			}
 		//enemies
 		if(positions_of_close_enemies != null){
 			int num_of_loops = positions_of_close_enemies.length;

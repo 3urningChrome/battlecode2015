@@ -31,7 +31,7 @@ public class Missile {
 				rc.yield();
 		//		}
 			}
-			if(i == 3)
+		//	if(i == 3)
 				//rc.disintegrate();
 			rc.yield();
 		}

@@ -130,10 +130,84 @@ public class Launcher extends Mobile {
 				if(direction_to_head.equals(Direction.OMNI) || direction_to_head.equals(Direction.NONE))
 					direction_to_head = initial_direction;
 			//	System.out.println("Turn5: " + direction_to_head);
-				send_broadcast(orders_broadcast_offset + location_channel(missile_location), direction_to_head.ordinal());						
-				return true;
+				send_broadcast(orders_broadcast_offset + location_channel(missile_location), direction_to_head.ordinal());
 			}
-				return false;
+				initial_direction = initial_direction.rotateLeft();
+				if(robot_controller.canLaunch(initial_direction)){
+					robot_controller.launchMissile(initial_direction);
+					last_fired = Clock.getRoundNum();
+					//turn 1
+					MapLocation  missile_location = robot_controller.getLocation().add(initial_direction);
+					Direction direction_to_head = missile_location.directionTo(target_location);
+			//		System.out.println("Turn1: " + direction_to_head);
+					send_broadcast(orders_broadcast_offset + location_channel(missile_location), direction_to_head.ordinal());
+					//turn 2
+					missile_location = missile_location.add(direction_to_head);
+					direction_to_head = missile_location.directionTo(target_location);
+					if(direction_to_head.equals(Direction.OMNI) || direction_to_head.equals(Direction.NONE))
+						direction_to_head = initial_direction;
+			//		System.out.println("Turn2: " + direction_to_head);
+					send_broadcast(orders_broadcast_offset + location_channel(missile_location), direction_to_head.ordinal());
+					//turn 3
+					missile_location = missile_location.add(direction_to_head);
+					direction_to_head = missile_location.directionTo(target_location);
+					if(direction_to_head.equals(Direction.OMNI) || direction_to_head.equals(Direction.NONE))
+						direction_to_head = initial_direction;
+				//	System.out.println("Turn3: " + direction_to_head);
+					send_broadcast(orders_broadcast_offset + location_channel(missile_location), direction_to_head.ordinal());
+					//turn 4
+					missile_location = missile_location.add(direction_to_head);
+					direction_to_head = missile_location.directionTo(target_location);
+					if(direction_to_head.equals(Direction.OMNI) || direction_to_head.equals(Direction.NONE))
+						direction_to_head = initial_direction;
+				//	System.out.println("Turn4: " + direction_to_head);
+					send_broadcast(orders_broadcast_offset + location_channel(missile_location), direction_to_head.ordinal());
+					//turn 5
+					missile_location = missile_location.add(direction_to_head);
+					direction_to_head = missile_location.directionTo(target_location);
+					if(direction_to_head.equals(Direction.OMNI) || direction_to_head.equals(Direction.NONE))
+						direction_to_head = initial_direction;
+				//	System.out.println("Turn5: " + direction_to_head);
+					send_broadcast(orders_broadcast_offset + location_channel(missile_location), direction_to_head.ordinal());	
+				}
+					initial_direction= initial_direction.rotateRight().rotateRight();
+					if(robot_controller.canLaunch(initial_direction)){
+						robot_controller.launchMissile(initial_direction);
+						last_fired = Clock.getRoundNum();
+						//turn 1
+						MapLocation missile_location = robot_controller.getLocation().add(initial_direction);
+						Direction direction_to_head = missile_location.directionTo(target_location);
+				//		System.out.println("Turn1: " + direction_to_head);
+						send_broadcast(orders_broadcast_offset + location_channel(missile_location), direction_to_head.ordinal());
+						//turn 2
+						missile_location = missile_location.add(direction_to_head);
+						direction_to_head = missile_location.directionTo(target_location);
+						if(direction_to_head.equals(Direction.OMNI) || direction_to_head.equals(Direction.NONE))
+							direction_to_head = initial_direction;
+				//		System.out.println("Turn2: " + direction_to_head);
+						send_broadcast(orders_broadcast_offset + location_channel(missile_location), direction_to_head.ordinal());
+						//turn 3
+						missile_location = missile_location.add(direction_to_head);
+						direction_to_head = missile_location.directionTo(target_location);
+						if(direction_to_head.equals(Direction.OMNI) || direction_to_head.equals(Direction.NONE))
+							direction_to_head = initial_direction;
+					//	System.out.println("Turn3: " + direction_to_head);
+						send_broadcast(orders_broadcast_offset + location_channel(missile_location), direction_to_head.ordinal());
+						//turn 4
+						missile_location = missile_location.add(direction_to_head);
+						direction_to_head = missile_location.directionTo(target_location);
+						if(direction_to_head.equals(Direction.OMNI) || direction_to_head.equals(Direction.NONE))
+							direction_to_head = initial_direction;
+					//	System.out.println("Turn4: " + direction_to_head);
+						send_broadcast(orders_broadcast_offset + location_channel(missile_location), direction_to_head.ordinal());
+						//turn 5
+						missile_location = missile_location.add(direction_to_head);
+						direction_to_head = missile_location.directionTo(target_location);
+						if(direction_to_head.equals(Direction.OMNI) || direction_to_head.equals(Direction.NONE))
+							direction_to_head = initial_direction;
+					//	System.out.println("Turn5: " + direction_to_head);
+						send_broadcast(orders_broadcast_offset + location_channel(missile_location), direction_to_head.ordinal());		
+					}
 			} catch (Exception e){
 				Utilities.print_exception(e);
 			}

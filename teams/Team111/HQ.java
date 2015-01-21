@@ -69,14 +69,14 @@ public class HQ extends Building  {
 		int swarm_retreat = Math.max(num_of_towers * 4, 15);
 		
 		//not many bots. lets stop swarming if we are.
-		if((total_fighting_robots < swarm_retreat && swarm_trigger != 0) || Clock.getRoundNum() > 1800){
+		if((total_fighting_robots < swarm_retreat && swarm_trigger != 0)){
 			swarm_trigger = 0;
 			//location = centre_point;
 			return location;
 		}
 
 		//lots of bots, lets kill (or carry on killing) stuff!
-		if(total_fighting_robots > swarm_attack || swarm_trigger != 0 ){
+		if(total_fighting_robots > swarm_attack || swarm_trigger != 0  || Clock.getRoundNum() > 1800 ){
 			if(the_towers.length < 1)
 				the_towers = new MapLocation[] {enemy_HQ_Location};
 			location = Utilities.find_closest(HQ_location,the_towers);
