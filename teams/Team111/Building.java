@@ -1,5 +1,6 @@
 package team111;
 
+import battlecode.common.Clock;
 import battlecode.common.Direction;
 import battlecode.common.RobotController;
 import battlecode.common.RobotType;
@@ -15,10 +16,16 @@ public class Building extends Arobot {
 	public void basic_turn_loop(){
 		robot_controller.yield();
 		while(true){
-			sensed_enemy_robots = robot_controller.senseNearbyRobots((int)(get_my_attack_radius()),enemy_team);			
-			attack_deadest_enemy_in_range();		
-			perform_a_troop_census();
-			update_strategy();	
+			if(my_type.canAttack()){
+				sensed_enemy_robots = robot_controller.senseNearbyRobots((int)(get_my_attack_radius()),enemy_team);			
+				attack_deadest_enemy_in_range();
+			}
+			//free up some bytecode for additional transfers
+			//if(Clock.getRoundNum()%3 == 0){
+				perform_a_troop_census();
+				update_strategy();
+			//}
+			
 			check_for_spawns();	
 			send_out_SOS_if_help_is_needed();
 			dish_out_supply();

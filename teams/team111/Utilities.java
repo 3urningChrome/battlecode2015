@@ -55,18 +55,7 @@ public abstract class Utilities {
 		return ((int)Math.pow((root + i),2));
 	}
 	
-	public static FastLocSet process_squares_in_range(MapLocation start_point, int radius, boolean remove, FastLocSet excluded_locations){
-		MapLocation[] danger_zones = MapLocation.getAllMapLocationsWithinRadiusSq(start_point, radius);
-		for(MapLocation danger_point:danger_zones){
-			if(remove){
-				excluded_locations.remove(danger_point);			
-			} else{
-				excluded_locations.add(danger_point);					
-			}
-		}
-		return excluded_locations;
-	}
-	
+
 	public static boolean inside_radius(MapLocation circle_centre, int radiusSquared, MapLocation test_point){
 		if(((test_point.x - circle_centre.x)^2 + (test_point.y - circle_centre.y)^2) < radiusSquared)
 			return true;

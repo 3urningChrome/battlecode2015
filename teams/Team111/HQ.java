@@ -1,7 +1,7 @@
 package team111;
 
 import battlecode.common.Clock;
-import battlecode.common.Direction;
+import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
@@ -13,6 +13,7 @@ public class HQ extends Building  {
 	static final int ROLE_START_POS = 0;
 	static int count_down = 20;
 	static int previous_num_of_towers = 0;
+	static int swarm_trigger = 0;
 
 	
 	public HQ(RobotController rc) {
@@ -43,7 +44,7 @@ public class HQ extends Building  {
 	
 	public MapLocation set_swarm_point(MapLocation [] the_towers){
 
-		MapLocation location = new MapLocation(0,0);
+		MapLocation return_location = new MapLocation(0,0);
 		int total_fighting_robots = robot_census[RobotType.BASHER.ordinal()] + robot_census[RobotType.COMMANDER.ordinal()] + robot_census[RobotType.DRONE.ordinal()] + robot_census[RobotType.SOLDIER.ordinal()] + (robot_census[RobotType.TANK.ordinal()]*3);
 		//	total_fighting_robots += robot_census[RobotType.LAUNCHER.ordinal()];
 		
@@ -62,7 +63,7 @@ public class HQ extends Building  {
 				
 		int num_of_towers = the_towers.length;
 		if(num_of_towers != previous_num_of_towers)
-			count_down = 20;
+			count_down = 15;
 		
 		previous_num_of_towers = num_of_towers;
 		int swarm_attack = Math.max((num_of_towers * 10),30);
@@ -72,23 +73,24 @@ public class HQ extends Building  {
 		if((total_fighting_robots < swarm_retreat && swarm_trigger != 0)){
 			swarm_trigger = 0;
 			//location = centre_point;
-			return location;
+			return return_location;
 		}
 
 		//lots of bots, lets kill (or carry on killing) stuff!
-		if(total_fighting_robots > swarm_attack || swarm_trigger != 0  || Clock.getRoundNum() > 1800 ){
+		//if(total_fighting_robots > swarm_attack || swarm_trigger != 0  || Clock.getRoundNum() > 1800 ){
+		if(Clock.getRoundNum() > 1750){
 			if(the_towers.length < 1)
 				the_towers = new MapLocation[] {enemy_HQ_Location};
-			location = Utilities.find_closest(HQ_location,the_towers);
-			RobotInfo[] my_troops = robot_controller.senseNearbyRobots(location, 100,my_team);
-			if(my_troops.length < 6){
-				location = location.add(location.directionTo(HQ_location),6);
-			}
+			return_location = Utilities.find_closest(HQ_location,the_towers);
+//			RobotInfo[] my_troops = robot_controller.senseNearbyRobots(return_location, 100,my_team);
+//			if(my_troops.length < 8){
+//				return_location = return_location.add(return_location.directionTo(HQ_location),1);
+//			}
 			count_down --;
 			swarm_trigger = swarm_attack;
-			return location;
+			return return_location;
 		}
-		return location;
+		return return_location;
 	}
 	
 	public void perform_a_troop_census(){
@@ -106,4 +108,33 @@ public class HQ extends Building  {
 			send_broadcast(troop_count_channel + i,robot_census[i]);
 		}
 	}
+	public boolean attack_deadest_enemy_in_range(){
+		if(my_type.canAttack())
+			if(robot_controller.isWeaponReady()){
+				int attack_radius = BEYOND_MAX_ATTACK_RANGE;
+				RobotInfo[] close_enemies = robot_controller.senseNearbyRobots(attack_radius, enemy_team);
+				if(close_enemies.length > 0){
+					int num_of_loops = close_enemies.length;
+					for(int i=0; i< num_of_loops;i++){
+						//if(!close_enemies[i].type.equals(RobotType.MISSILE)){
+							try{
+								if(robot_controller.canAttackLocation(close_enemies[i].location)){
+									robot_controller.attackLocation(close_enemies[i].location);
+									return true;
+								} else{
+									MapLocation newLocation = close_enemies[i].location.add(robot_controller.getLocation().directionTo(close_enemies[i].location).opposite());
+									if(robot_controller.canAttackLocation(newLocation)){
+										robot_controller.attackLocation(newLocation);
+										return true;
+									}
+								}
+							} catch (Exception e){
+								Utilities.print_exception(e);
+							}
+						//}
+					}
+				}
+			}
+		return false;
+	}	
 }

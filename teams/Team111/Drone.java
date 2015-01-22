@@ -10,8 +10,11 @@ public class Drone extends Mobile {
 		super(rc);
 	}
 	public MapLocation get_default_location(){
-		aggressive = 1; 
+		aggressive = 0; 
+		if(Clock.getRoundNum() < 1000)
 		return enemy_HQ_Location.add(directions[(Clock.getRoundNum()/20)%8],(9));
+		
+		return enemy_HQ_Location.add(directions[(Clock.getRoundNum()/20)%8],(16));
 	}
 
 }

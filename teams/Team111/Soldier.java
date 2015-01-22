@@ -10,7 +10,15 @@ public class Soldier extends Mobile{
 		super(rc);
 	}
 	public MapLocation get_default_location(){
-		aggressive = 0; 
-		return HQ_location.add(directions[((Clock.getRoundNum()/40)+ robot_controller.getID())%8],(11));
+		if(Clock.getRoundNum() > 800){
+			location =  HQ_location.add(directions[((Clock.getRoundNum()/40)+ robot_controller.getID())%8],(20));
+			aggressive = 1; 
+		} else{	
+			location =  HQ_location.add(directions[((Clock.getRoundNum()/40)+ robot_controller.getID())%8],(11));
+			aggressive = 0; 
+		}
+		read_swarm_location(); //sets location
+		find_enemy_to_go_after_if_i_am_aggressive(); //sets location
+		return location;
 	}
 }
