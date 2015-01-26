@@ -63,25 +63,19 @@ public class Mobile extends Arobot {
 			return;
 		if(build())
 			return;
-		mine();
-		
+		mine();	
 		return;
 	}
 	
 	public boolean decided_to_move() {
 		process_hostile_contacts();
-		
-		
 		allow_bugging = robot_controller.getLocation().distanceSquaredTo(location) <= BEYOND_MAX_ATTACK_RANGE ? false : true;
-		
 		if(all_out_attack)
 			return move(robot_controller.getLocation().directionTo(get_my_bug_Nav_next_step(robot_controller.getLocation(), location)));
-		
 		if(missile_exclusion_zone != null && robot_controller.getLocation().distanceSquaredTo(missile_exclusion_zone) < 81)
 			return move(robot_controller.getLocation().directionTo(get_my_bug_Nav_next_step(robot_controller.getLocation(), HQ_location)));
 		 if(!enemy_in_range)
 				return move(robot_controller.getLocation().directionTo(get_my_bug_Nav_next_step(robot_controller.getLocation(), location)));
-		 
 		return false;
 	}
 	
@@ -92,7 +86,7 @@ public class Mobile extends Arobot {
 			if(robot_controller.canSenseLocation(location)){
 				RobotInfo possibleEnemy = robot_controller.senseRobotAtLocation(location);
 				if(possibleEnemy != null && possibleEnemy.team.equals(enemy_team))
-					if(robot_controller.getLocation().distanceSquaredTo(location) < get_my_attack_radius()){
+					if(robot_controller.getLocation().distanceSquaredTo(location) <= get_my_attack_radius()){
 						robot_controller.attackLocation(location);
 						return true;
 					}
@@ -239,7 +233,7 @@ public class Mobile extends Arobot {
 //TODO shouldn't this be <= mycurrent range?
 			//keep 1 extra square away
 			int new_attack_range = Utilities.increase_attack_radius(attack_ranges_of_close_enemies[attack_range_position], 1);
-			if (new_attack_range < robot_controller.getLocation().distanceSquaredTo(robot_to_examine.location) ) 
+			if (new_attack_range <= robot_controller.getLocation().distanceSquaredTo(robot_to_examine.location) ) 
 				attack_ranges_of_close_enemies[attack_range_position] =new_attack_range;
 		}
 	}

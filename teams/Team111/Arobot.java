@@ -140,6 +140,7 @@ public class Arobot {
 			robot_max[RobotType.HANDWASHSTATION.ordinal()] = 100;
 			robot_max[RobotType.DRONE.ordinal()] = 0;
 			robot_max[RobotType.LAUNCHER.ordinal()] = 0;
+			robot_max[RobotType.TANK.ordinal()] = 0;
 		} 
 	}
 	
