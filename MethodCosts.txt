@@ -33,6 +33,7 @@ battlecode/common/RobotController/getHealth                   1     true
 battlecode/common/RobotController/getID                       1     true
 battlecode/common/RobotController/getLocation                 1     true
 battlecode/common/RobotController/getMissileCount             1     true
+battlecode/common/RobotController/getRoundLimit               1     true
 battlecode/common/RobotController/getSupplyLevel              1     true
 battlecode/common/RobotController/getTeam                     1     true
 battlecode/common/RobotController/getTeamMemory               0     true
@@ -44,6 +45,7 @@ battlecode/common/RobotController/hasBuildRequirements        50    true
 battlecode/common/RobotController/hasCommander                25    true
 battlecode/common/RobotController/hasLearnedSkill             5     true
 battlecode/common/RobotController/hasSpawnRequirements        50    true
+battlecode/common/RobotController/isBuildingSomething         1     true
 battlecode/common/RobotController/isCoreReady                 10    true
 battlecode/common/RobotController/isLocationOccupied          20    true
 battlecode/common/RobotController/isPathable                  20    true

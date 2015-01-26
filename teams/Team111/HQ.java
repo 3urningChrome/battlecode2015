@@ -78,7 +78,7 @@ public class HQ extends Building  {
 
 		//lots of bots, lets kill (or carry on killing) stuff!
 		//if(total_fighting_robots > swarm_attack || swarm_trigger != 0  || Clock.getRoundNum() > 1800 ){
-		if(Clock.getRoundNum() > 1750){
+		if(Clock.getRoundNum() > robot_controller.getRoundLimit() - 350){
 			if(the_towers.length < 1)
 				the_towers = new MapLocation[] {enemy_HQ_Location};
 			return_location = Utilities.find_closest(HQ_location,the_towers);

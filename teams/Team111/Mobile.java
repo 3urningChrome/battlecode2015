@@ -68,7 +68,7 @@ public class Mobile extends Arobot {
 		return;
 	}
 	
-	private boolean decided_to_move() {
+	public boolean decided_to_move() {
 		process_hostile_contacts();
 		
 		
@@ -85,7 +85,7 @@ public class Mobile extends Arobot {
 		return false;
 	}
 	
-	private boolean shoot() {
+	public boolean shoot() {
 		if(!robot_controller.isWeaponReady())
 			return false;
 		try{
@@ -231,20 +231,12 @@ public class Mobile extends Arobot {
 		int my_attack_delay = (int) ((robot_controller.getWeaponDelay() + my_type.loadingDelay)/my_delay_reduction_rate);
 		int enemy_move_delay = (int) ((robot_to_examine.coreDelay)/enemy_delay_reduction_rate); //move del
 		
-//		if(very_close_friends.length > sensed_enemy_robots.length){
-//			attack_ranges_of_close_enemies[attack_range_position] = 0;
-//		} else{
-//			int new_attack_range = Utilities.increase_attack_radius(attack_ranges_of_close_enemies[attack_range_position], 1);
-//			if (new_attack_range < robot_controller.getLocation().distanceSquaredTo(robot_to_examine.location) ) 
-//				attack_ranges_of_close_enemies[attack_range_position] =new_attack_range;			
-//		}
-		
 		if(i_do_more_ore_damage(robot_to_examine)){
 			//if i can move n shoot before they can shoot and run reduce
 			if(my_attack_delay < enemy_move_delay || very_close_friends.length > sensed_enemy_robots.length)
 				attack_ranges_of_close_enemies[attack_range_position] = Utilities.increase_attack_radius(attack_ranges_of_close_enemies[attack_range_position], -1);
-				//attack_ranges_of_close_enemies[attack_range_position] = 0;
 		}else{
+//TODO shouldn't this be <= mycurrent range?
 			//keep 1 extra square away
 			int new_attack_range = Utilities.increase_attack_radius(attack_ranges_of_close_enemies[attack_range_position], 1);
 			if (new_attack_range < robot_controller.getLocation().distanceSquaredTo(robot_to_examine.location) ) 
@@ -322,7 +314,7 @@ public class Mobile extends Arobot {
 			return false; // not an invalid move, but cannot move. so return
 		try{			
 			if(direction.ordinal() > 7)
-					return false; // move direction is none or omni etc. return true
+					return false; // move direction is none or omni etc. return
 			if(robot_controller.canMove(direction)){
 				robot_controller.move(direction);
 				return true; //we moved
@@ -334,7 +326,6 @@ public class Mobile extends Arobot {
 	}
 	
 //--------------------------------------------Build Structures--------------------------------------------------------------	
-//TODO don't block yourself or others in!
 	public boolean try_to_process_builds() {
 		if(robot_controller.isCoreReady())
 			if(my_type.canBuild())
@@ -372,8 +363,7 @@ public class Mobile extends Arobot {
 	
 //--------------------------------------------NAVIGATION--------------------------------------------------------------
 	
-//TODO: add breadth first bugging.
-//TODO handle is destination is off the map/inaccessable. stop bugging and wait at some point.
+//TODO: add predictive nav
 	
 	public MapLocation get_my_bug_Nav_next_step(MapLocation start_pos, MapLocation end_pos){
 		if(!previous_location.equals(end_pos))
@@ -405,10 +395,7 @@ public class Mobile extends Arobot {
 				}
 			}
 		}
-	//	if(allow_bugging)
 		return move_buggingly_toward_location(start_pos,end_pos);
-		
-		//return robot_controller.getLocation();
 	}
 	
 	public MapLocation move_buggingly_toward_location(MapLocation start_pos, MapLocation end_pos){
@@ -427,7 +414,6 @@ public class Mobile extends Arobot {
 				if(terrain_is_off_map(next_location)){
 					bugging = false; //stop bugging around outer edge of map. no point what so ever!
 					bugging_direction *= (-1); // reverse bugging direction so that next time, we go the other way.
-					//return get_my_bug_Nav_next_step(start_pos,end_pos); // try again, this time bugging the other way.
 					return start_pos;
 				}
 			}

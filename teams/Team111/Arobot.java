@@ -97,7 +97,9 @@ public class Arobot {
 		robot_max[RobotType.SOLDIER.ordinal()] = 8;
 		robot_max[RobotType.DRONE.ordinal()] = 8;
 //		robot_max[RobotType.HELIPAD.ordinal()] = 1;
-		
+//		robot_max[RobotType.TECHNOLOGYINSTITUTE.ordinal()] = 1;
+//		robot_max[RobotType.TRAININGFIELD.ordinal()] = 1;
+//		robot_max[RobotType.COMMANDER.ordinal()] = 1;
 		if(Clock.getRoundNum()> 350){
 			robot_max[RobotType.DRONE.ordinal()] = 0;
 		}
@@ -121,6 +123,8 @@ public class Arobot {
 		
 		if(robot_controller.getTeamOre() > 1200 ){
 	//		robot_max[RobotType.LAUNCHER.ordinal()] = 999;
+			robot_max[RobotType.TANKFACTORY.ordinal()] = robot_census[RobotType.TANKFACTORY.ordinal()] + 1;
+			robot_max[RobotType.MINER.ordinal()] = robot_census[RobotType.MINER.ordinal()] + 1;
 		}
 		
 		if(robot_census[RobotType.TANK.ordinal()] > 10 ){
@@ -132,7 +136,7 @@ public class Arobot {
 			robot_max[RobotType.SUPPLYDEPOT.ordinal()] = 12;
 		}
 
-		if(Clock.getRoundNum()> (1890)){
+		if(Clock.getRoundNum()> (robot_controller.getRoundLimit()-105)){
 			robot_max[RobotType.HANDWASHSTATION.ordinal()] = 100;
 			robot_max[RobotType.DRONE.ordinal()] = 0;
 			robot_max[RobotType.LAUNCHER.ordinal()] = 0;
